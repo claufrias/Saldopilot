@@ -19,4 +19,4 @@ Para activarlo en GitHub:
 2. En **Build and deployment**, selecciona **GitHub Actions** como fuente.
 3. Ejecuta el workflow **Deploy to GitHub Pages** o haz push a una de las ramas configuradas.
 
-La app usa rutas con hash y `base: './'`, por lo que funciona correctamente tanto en dominios de usuario u organización como en repositorios publicados bajo subruta (`https://usuario.github.io/repositorio/`).
+El workflow calcula `VITE_BASE_PATH` antes de compilar para que Vite genere rutas de assets compatibles con GitHub Pages: `/` en repositorios `*.github.io` y `/<repositorio>/` en repositorios publicados bajo subruta. En desarrollo local se mantiene `base: './'` por defecto.
