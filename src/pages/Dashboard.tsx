@@ -51,22 +51,22 @@ export function Dashboard() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       <SectionHeader
         title="Dashboard"
         description="Una vista clara del mes, tus movimientos recientes y el avance de tus objetivos."
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <Metric title="Saldo actual" value={formatCurrency(balance)} icon={<WalletCards className="h-5 w-5" />} tone="zinc" />
         <Metric title="Ingresos del mes" value={formatCurrency(totalIncome)} icon={<ArrowUpRight className="h-5 w-5" />} tone="emerald" />
         <Metric title="Gastos pagados" value={formatCurrency(totalExpenses)} icon={<ArrowDownRight className="h-5 w-5" />} tone="rose" />
         <Metric title="Tarjetas próximo mes" value={formatCurrency(dueNextMonth)} icon={<CreditCard className="h-5 w-5" />} tone="amber" />
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid gap-2.5 sm:gap-3 lg:grid-cols-3">
         {insights.map((insight) => (
-          <div key={insight.id} className="panel p-4">
+          <div key={insight.id} className="panel p-3.5 sm:p-4">
             <div className="flex gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${insight.iconClassName}`}>
                 {insight.icon}
@@ -105,8 +105,8 @@ export function Dashboard() {
         </section>
       ) : null}
 
-      <section className="grid gap-6 lg:grid-cols-[1fr_1.25fr]">
-        <div className="panel p-5">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_1.25fr]">
+        <div className="panel p-4 sm:p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="label">Objetivo de ahorro</p>
@@ -139,7 +139,7 @@ export function Dashboard() {
         </div>
 
         <div className="panel overflow-hidden">
-          <div className="border-b border-zinc-200/80 p-5 dark:border-white/10">
+          <div className="border-b border-zinc-200/80 p-4 sm:p-5 dark:border-white/10">
             <p className="label">Últimos movimientos</p>
           </div>
           <div className="divide-y divide-zinc-200/80 dark:divide-white/10">
@@ -147,7 +147,7 @@ export function Dashboard() {
               const amountClassName = movement.type === 'income' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
 
               return (
-              <div key={movement.id} className="flex items-center justify-between gap-4 p-4">
+              <div key={movement.id} className="flex items-center justify-between gap-3 p-3.5 sm:gap-4 sm:p-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <CategoryIcon category={movement.category} />
                   <div className="min-w-0">
@@ -372,11 +372,15 @@ function Metric({
   value,
   icon,
   tone,
+  className = '',
+  featured = false,
 }: {
   title: string;
   value: string;
   icon: ReactNode;
   tone: 'zinc' | 'emerald' | 'rose' | 'sky' | 'amber';
+  className?: string;
+  featured?: boolean;
 }) {
   const tones = {
     zinc: 'bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200',
@@ -387,13 +391,13 @@ function Metric({
   };
 
   return (
-    <div className="panel p-5">
+    <div className={`panel p-4 sm:p-5 ${className}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="label">{title}</p>
-          <p className="mt-3 text-2xl font-bold text-zinc-950 dark:text-white">{value}</p>
+          <p className={`${featured ? 'mt-3 text-3xl sm:text-2xl' : 'mt-2 text-xl sm:mt-3 sm:text-2xl'} font-bold text-zinc-950 dark:text-white`}>{value}</p>
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tones[tone]}`}>{icon}</div>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tones[tone]}`}>{icon}</div>
       </div>
     </div>
   );
