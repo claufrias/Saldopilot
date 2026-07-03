@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { initialState } from '../data/sampleData';
 import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
@@ -41,6 +41,7 @@ interface AppContextValue extends AppState {
   setTheme: (theme: AppState['theme']) => void;
   importState: (state: AppState) => void;
   resetState: () => void;
+  syncCloudStateNow: () => Promise<void>;
 }
 
 const CLOUD_STATE_KEY = 'default';
@@ -50,8 +51,29 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
   const [state, setState] = useState<AppState>(initialState);
   const [cloudStateLoaded, setCloudStateLoaded] = useState(!isSupabaseConfigured || !userId);
   const lastSyncedState = useRef<string | null>(null);
+  const syncTimeout = useRef<number | null>(null);
   const currentState = normalizeState(state);
 
+  const syncCloudStateNow = useCallback(async () => {
+    if (!supabaseApi || !userId || !cloudStateLoaded) {
+      return;
+    }
+
+    if (syncTimeout.current !== null) {
+      window.clearTimeout(syncTimeout.current);
+      syncTimeout.current = null;
+    }
+
+    const normalizedState = normalizeState(state);
+    const serializedState = JSON.stringify(normalizedState);
+
+    if (lastSyncedState.current === serializedState) {
+      return;
+    }
+
+    await supabaseApi.upsertState(userId, CLOUD_STATE_KEY, normalizedState);
+    lastSyncedState.current = serializedState;
+  }, [cloudStateLoaded, state, userId]);
 
   useEffect(() => {
     if (!supabaseApi || !userId) {
@@ -99,15 +121,25 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
       return;
     }
 
-    lastSyncedState.current = serializedState;
-
-    const syncTimeout = window.setTimeout(() => {
-      api.upsertState(userId, CLOUD_STATE_KEY, normalizedState).catch((error) => {
-        console.error('No se pudo sincronizar el estado con Supabase.', error);
-      });
+    const nextSyncTimeout = window.setTimeout(() => {
+      syncTimeout.current = null;
+      api
+        .upsertState(userId, CLOUD_STATE_KEY, normalizedState)
+        .then(() => {
+          lastSyncedState.current = serializedState;
+        })
+        .catch((error) => {
+          console.error('No se pudo sincronizar el estado con Supabase.', error);
+        });
     }, 400);
+    syncTimeout.current = nextSyncTimeout;
 
-    return () => window.clearTimeout(syncTimeout);
+    return () => {
+      if (syncTimeout.current === nextSyncTimeout) {
+        window.clearTimeout(nextSyncTimeout);
+        syncTimeout.current = null;
+      }
+    };
   }, [cloudStateLoaded, state, userId]);
 
   // Al abrir la app, los gastos fijos activos se transforman en movimientos del mes actual.
@@ -348,8 +380,9 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
       setTheme: (theme) => setState((current) => ({ ...normalizeState(current), theme })),
       importState: (nextState) => setState(normalizeState(nextState)),
       resetState: () => setState(initialState),
+      syncCloudStateNow,
     }),
-    [currentState, setState],
+    [currentState, setState, syncCloudStateNow],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

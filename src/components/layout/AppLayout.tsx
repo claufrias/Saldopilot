@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
@@ -31,7 +32,26 @@ const navItems = [
 
 export function AppLayout() {
   const { currentUser, logout } = useAuth();
+  const { syncCloudStateNow } = useApp();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+
+    try {
+      await syncCloudStateNow();
+      await logout();
+    } catch (error) {
+      console.error('No se pudo guardar el estado antes de cerrar sesion.', error);
+      window.alert('No se pudieron guardar los datos antes de cerrar sesion. Revisa tu conexion e intenta nuevamente.');
+      setLoggingOut(false);
+    }
+  };
 
   const nav = (
     <nav className="space-y-1">
@@ -61,7 +81,12 @@ export function AppLayout() {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-zinc-200/80 bg-white/90 px-5 py-6 backdrop-blur xl:block dark:border-white/10 dark:bg-zinc-950/90">
         <Brand />
         <div className="mt-8">{nav}</div>
-        <SessionCard name={currentUser?.name ?? 'Usuario'} email={currentUser?.email ?? ''} onLogout={logout} />
+        <SessionCard
+          name={currentUser?.name ?? 'Usuario'}
+          email={currentUser?.email ?? ''}
+          onLogout={handleLogout}
+          loggingOut={loggingOut}
+        />
       </aside>
 
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-200/80 bg-stone-50/85 px-4 backdrop-blur xl:hidden dark:border-white/10 dark:bg-zinc-950/85">
@@ -81,7 +106,12 @@ export function AppLayout() {
               </button>
             </div>
             <div className="mt-8">{nav}</div>
-            <SessionCard name={currentUser?.name ?? 'Usuario'} email={currentUser?.email ?? ''} onLogout={logout} />
+            <SessionCard
+              name={currentUser?.name ?? 'Usuario'}
+              email={currentUser?.email ?? ''}
+              onLogout={handleLogout}
+              loggingOut={loggingOut}
+            />
           </aside>
         </div>
       ) : null}
@@ -95,7 +125,17 @@ export function AppLayout() {
   );
 }
 
-function SessionCard({ name, email, onLogout }: { name: string; email: string; onLogout: () => void }) {
+function SessionCard({
+  name,
+  email,
+  onLogout,
+  loggingOut,
+}: {
+  name: string;
+  email: string;
+  onLogout: () => void;
+  loggingOut: boolean;
+}) {
   return (
     <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-center gap-3">
@@ -110,10 +150,11 @@ function SessionCard({ name, email, onLogout }: { name: string; email: string; o
       <button
         className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-950 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
         onClick={onLogout}
+        disabled={loggingOut}
         type="button"
       >
         <LogOut className="h-4 w-4" />
-        Cerrar sesion
+        {loggingOut ? 'Guardando...' : 'Cerrar sesion'}
       </button>
     </div>
   );

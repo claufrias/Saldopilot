@@ -13,7 +13,7 @@ interface AuthContextValue {
   currentUser: SessionUser | null;
   login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   passwordRecoveryPending: boolean;
   emailConfirmationPending: boolean;
   continueAfterEmailConfirmation: () => void;
@@ -146,8 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo actualizar la contrasena.' };
         }
       },
-      logout: () => {
-        void supabaseApi?.signOut();
+      logout: async () => {
+        await supabaseApi?.signOut();
         setPasswordRecoveryPending(false);
         setEmailConfirmationPending(false);
         setConfirmedUser(null);
