@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 const authBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio.png`;
+const mobileAuthBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio_movil.png`;
 
 type AuthMode = 'login' | 'register' | 'recover' | 'reset' | 'confirmed';
 
@@ -103,9 +104,16 @@ export function Auth() {
         : 'Usa tu email y contrasena de Supabase.';
 
   return (
-    <main className="grid min-h-screen bg-stone-50 p-4 dark:bg-zinc-950 lg:grid-cols-[1fr_520px]">
+    <main className="relative grid min-h-screen overflow-hidden bg-stone-50 p-4 dark:bg-zinc-950 lg:grid-cols-[1fr_520px]">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat lg:hidden"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(250, 250, 249, 0.18) 0%, rgba(250, 250, 249, 0.78) 38%, rgba(250, 250, 249, 0.96) 100%), url(${mobileAuthBackgroundUrl})`,
+        }}
+        aria-hidden="true"
+      />
       <section
-        className="hidden min-h-[calc(100vh-2rem)] flex-col justify-between overflow-hidden rounded-xl bg-zinc-950 bg-cover bg-center p-10 text-white lg:flex"
+        className="relative hidden min-h-[calc(100vh-2rem)] flex-col justify-between overflow-hidden rounded-xl bg-zinc-950 bg-cover bg-center p-10 text-white lg:flex"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(9, 9, 11, 0.96) 0%, rgba(9, 9, 11, 0.82) 42%, rgba(9, 9, 11, 0.36) 100%), url(${authBackgroundUrl})`,
         }}
@@ -135,19 +143,19 @@ export function Auth() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center px-0 py-8 sm:px-6">
+      <section className="relative flex items-center justify-center px-0 py-8 sm:px-6">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-950 text-white shadow-lg dark:bg-white dark:text-zinc-950">
               <PiggyBank className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-base font-bold text-zinc-950 dark:text-white">Saldopilot</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Finanzas personales</p>
+              <p className="text-base font-bold text-zinc-950 drop-shadow-sm dark:text-white">Saldopilot</p>
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Finanzas personales</p>
             </div>
           </div>
 
-          <div className="panel p-5 sm:p-6">
+          <div className="rounded-lg border border-white/70 bg-white/88 p-5 shadow-2xl shadow-zinc-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/88 sm:p-6 lg:border-zinc-200/80 lg:bg-white lg:shadow-soft lg:backdrop-blur-none lg:dark:border-white/10 lg:dark:bg-zinc-900">
             {!isReset && !isConfirmed ? (
               <div className="flex rounded-lg bg-zinc-100 p-1 dark:bg-white/10">
                 <button
