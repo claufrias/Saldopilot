@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../lib/supabase';
 
-const authBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio.svg`;
+const authBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio.png`;
 
 type AuthMode = 'login' | 'register' | 'recover' | 'reset' | 'confirmed';
 
@@ -121,10 +121,10 @@ export function Auth() {
         </div>
 
         <div className="max-w-xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Acceso privado</p>
-          <h1 className="mt-4 text-5xl font-extrabold leading-tight">Tu tablero financiero, separado por usuario.</h1>
+          <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Acceso anticipado privado</p>
+          <h1 className="mt-4 text-5xl font-extrabold leading-tight">Controlá tus gastos sin hacerlo aburrido.</h1>
           <p className="mt-5 text-base leading-7 text-zinc-300">
-            Cada perfil guarda movimientos, tarjetas, objetivos y configuracion sincronizados en Supabase.
+            Tus movimientos, gastos y objetivos siempre al día, estés donde estés.
           </p>
         </div>
 
