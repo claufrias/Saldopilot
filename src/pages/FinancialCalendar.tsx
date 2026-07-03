@@ -134,7 +134,7 @@ export function FinancialCalendar() {
                       <div key={event.id} className={`rounded-lg px-3 py-2 text-sm font-semibold ${eventClassName(event)}`}>
                         <div className="flex items-center justify-between gap-3">
                           <span className="truncate">{event.title}</span>
-                          {event.amount ? <span className="shrink-0">{formatCurrency(event.amount)}</span> : null}
+                          {event.amount ? <span className="shrink-0">{formatEventAmount(event)}</span> : null}
                         </div>
                       </div>
                     ))}
@@ -178,7 +178,7 @@ export function FinancialCalendar() {
                   {dayEvents.slice(0, 4).map((event) => (
                     <div key={event.id} className={`rounded-md px-2 py-1 text-[11px] font-semibold ${eventClassName(event)}`} title={event.title}>
                       <p className="truncate">{event.title}</p>
-                      {event.amount ? <p className="truncate opacity-80">{formatCurrency(event.amount)}</p> : null}
+                      {event.amount ? <p className="truncate opacity-80">{formatEventAmount(event)}</p> : null}
                     </div>
                   ))}
                   {dayEvents.length > 4 ? <p className="px-1 text-xs text-zinc-400">+{dayEvents.length - 4} más</p> : null}
@@ -308,6 +308,11 @@ function Legend({ icon, label, tone }: { icon: ReactNode; label: string; tone: C
 
 function eventClassName(event: CalendarEvent): string {
   return event.className ?? toneClasses[event.tone];
+}
+
+function formatEventAmount(event: CalendarEvent): string {
+  const sign = event.cashFlow === 'income' ? '+' : event.cashFlow === 'expense' ? '-' : '';
+  return `${sign}${formatCurrency(event.amount ?? 0)}`;
 }
 
 function buildCalendarDays(year: number, month: number) {
