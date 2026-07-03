@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { LockKeyhole, LogIn, PiggyBank, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 type AuthMode = 'login' | 'register';
 
@@ -12,12 +13,14 @@ export function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const isRegister = mode === 'register';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     const result = isRegister ? await register(name, email, password) : await login(email, password);
@@ -26,12 +29,18 @@ export function Auth() {
 
     if (!result.ok) {
       setError(result.message ?? 'No se pudo completar la accion.');
+      return;
+    }
+
+    if (result.message) {
+      setSuccess(result.message);
     }
   }
 
   function changeMode(nextMode: AuthMode) {
     setMode(nextMode);
     setError('');
+    setSuccess('');
   }
 
   return (
@@ -51,14 +60,14 @@ export function Auth() {
           <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Acceso privado</p>
           <h1 className="mt-4 text-5xl font-extrabold leading-tight">Tu tablero financiero, separado por usuario.</h1>
           <p className="mt-5 text-base leading-7 text-zinc-300">
-            Cada perfil guarda movimientos, tarjetas, objetivos y configuracion en su propio espacio local del navegador.
+            Cada perfil guarda movimientos, tarjetas, objetivos y configuracion sincronizados en Supabase.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-sm">
-          <AuthPill label="LocalStorage" />
+          <AuthPill label="Supabase" />
           <AuthPill label="Sesion persistente" />
-          <AuthPill label="Sin backend" />
+          <AuthPill label="Sincronizacion cloud" />
         </div>
       </section>
 
@@ -109,8 +118,8 @@ export function Auth() {
                   </h1>
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                     {isRegister
-                      ? 'El primer usuario conserva automaticamente los datos actuales de la app.'
-                      : 'Usa el email y la contrasena que creaste en este navegador.'}
+                      ? 'Crea una cuenta sincronizada con Supabase para usar tus datos en varios dispositivos.'
+                      : 'Usa tu email y contrasena de Supabase.'}
                   </p>
                 </div>
               </div>
@@ -149,6 +158,12 @@ export function Auth() {
                   </div>
                 ) : null}
 
+                {success ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    {success}
+                  </div>
+                ) : null}
+
                 <Button className="w-full" icon={isRegister ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />} disabled={loading}>
                   {loading ? 'Procesando...' : isRegister ? 'Crear usuario' : 'Ingresar'}
                 </Button>
@@ -157,7 +172,9 @@ export function Auth() {
           </div>
 
           <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            Este login es local: no sincroniza ni protege datos fuera de este navegador.
+            {isSupabaseConfigured
+              ? 'Conectado a Supabase: el login y los datos se sincronizan entre dispositivos.'
+              : 'Supabase no esta configurado: agrega las variables de entorno y vuelve a desplegar.'}
           </p>
         </div>
       </section>

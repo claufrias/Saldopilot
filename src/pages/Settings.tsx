@@ -56,7 +56,7 @@ export function Settings() {
     try {
       const parsed = JSON.parse(await file.text()) as AppState;
 
-      // Validación mínima del respaldo antes de reemplazar el estado local completo.
+      // Validación mínima del respaldo antes de reemplazar el estado sincronizado.
       if (!Array.isArray(parsed.movements) || !Array.isArray(parsed.budgets)) {
         throw new Error('Formato inválido');
       }
@@ -89,7 +89,7 @@ export function Settings() {
 
   return (
     <div className="space-y-8">
-      <SectionHeader title="Configuración" description="Administra apariencia, respaldo local y reinicio de datos." />
+      <SectionHeader title="Configuración" description="Administra apariencia, respaldo y reinicio de datos sincronizados." />
 
       <section className="panel p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -165,7 +165,7 @@ export function Settings() {
 
       <section className="panel p-5">
         <h2 className="text-lg font-bold text-zinc-950 dark:text-white">Datos</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toda la información vive en LocalStorage del navegador.</p>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toda la información se sincroniza con Supabase para tu usuario.</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button icon={<Download className="h-4 w-4" />} onClick={exportData}>
             Exportar JSON
