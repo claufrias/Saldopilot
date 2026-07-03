@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { getCategoryColorFor } from '../components/category/CategoryBadge';
 import { MONTHS } from '../data/constants';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/format';
@@ -12,7 +11,6 @@ import {
   getCreditDueForMonth,
   getMovementsWithFinancialStart,
   getOperationalMovements,
-  isCreditCardCharge,
 } from '../utils/finance';
 import { monthKey, toMonthKey } from '../utils/date';
 
@@ -39,7 +37,7 @@ const toneClasses: Record<CalendarEventTone, string> = {
 };
 
 export function FinancialCalendar() {
-  const { movements, categories, financialStart, creditCards, creditCardPayments, recurringExpenses } = useApp();
+  const { movements, financialStart, creditCards, creditCardPayments, recurringExpenses } = useApp();
   const today = new Date();
   const [visibleDate, setVisibleDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -55,12 +53,11 @@ export function FinancialCalendar() {
         monthKey: visibleMonthKey,
         movements: movementsWithStart,
         operationalMovements,
-        categories,
         creditCards,
         creditCardPayments,
         recurringExpenses,
       }),
-    [categories, creditCardPayments, creditCards, movementsWithStart, operationalMovements, recurringExpenses, visibleMonthKey],
+    [creditCardPayments, creditCards, movementsWithStart, operationalMovements, recurringExpenses, visibleMonthKey],
   );
 
   const days = buildCalendarDays(year, month);
@@ -349,7 +346,6 @@ function buildCalendarEvents({
   monthKey: selectedMonthKey,
   movements,
   operationalMovements,
-  categories,
   creditCards,
   creditCardPayments,
   recurringExpenses,
@@ -357,7 +353,6 @@ function buildCalendarEvents({
   monthKey: string;
   movements: ReturnType<typeof getMovementsWithFinancialStart>;
   operationalMovements: ReturnType<typeof getOperationalMovements>;
-  categories: ReturnType<typeof useApp>['categories'];
   creditCards: ReturnType<typeof useApp>['creditCards'];
   creditCardPayments: ReturnType<typeof useApp>['creditCardPayments'];
   recurringExpenses: ReturnType<typeof useApp>['recurringExpenses'];
@@ -367,15 +362,12 @@ function buildCalendarEvents({
   movements
     .filter((movement) => movement.date.startsWith(selectedMonthKey) && movement.movementKind !== 'credit_card_payment')
     .forEach((movement) => {
-      const categoryTone = getCategoryColorFor(categories, movement.category);
-
       events.push({
         id: `movement-${movement.id}`,
         date: movement.date,
         title: movement.movementKind === 'opening_balance' ? 'Saldo inicial' : movement.description,
         amount: movement.amount,
-        tone: movement.type === 'income' ? 'emerald' : isCreditCardCharge(movement) ? 'amber' : 'sky',
-        className: movement.type === 'expense' ? `${categoryTone.soft} ${categoryTone.text}` : undefined,
+        tone: movement.type === 'income' ? 'emerald' : 'rose',
         amountClassName: movement.type === 'income' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300',
         cashFlow: movement.type,
         kind: 'movement',
@@ -400,7 +392,6 @@ function buildCalendarEvents({
     .filter((expense) => expense.active && toMonthKey(expense.startDate) <= selectedMonthKey)
     .forEach((expense) => {
       const day = Number(expense.startDate.slice(-2));
-      const categoryTone = getCategoryColorFor(categories, expense.category);
 
       events.push({
         id: `recurring-${expense.id}`,
@@ -408,7 +399,6 @@ function buildCalendarEvents({
         title: expense.description,
         amount: expense.amount,
         tone: 'rose',
-        className: `${categoryTone.soft} ${categoryTone.text}`,
         amountClassName: 'text-rose-600 dark:text-rose-300',
         cashFlow: 'expense',
         kind: 'recurring',
