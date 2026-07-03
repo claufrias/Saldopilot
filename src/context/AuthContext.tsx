@@ -26,6 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSupabaseUser(session?.user ? toSupabaseSessionUser(session.user) : null);
   }, []);
 
+  useEffect(() => {
+    if (!supabaseApi) {
+      return;
+    }
+
+    setSupabaseUser(supabaseApi.getSession()?.user ? toSupabaseSessionUser(supabaseApi.getSession()!.user) : null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       users: supabaseUser ? [supabaseUser] : [],
