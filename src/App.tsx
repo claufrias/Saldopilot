@@ -21,7 +21,7 @@ export default function App() {
   }
 
   return (
-    <AppProvider key={currentUser.id} storageKey={userStateStorageKey(currentUser.id)}>
+    <AppProvider key={currentUser.id} storageKey={userStateStorageKey(currentUser.id)} userId={currentUser.id}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />

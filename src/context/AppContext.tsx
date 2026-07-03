@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { initialState } from '../data/sampleData';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
 import type {
   AppCategory,
   AppState,
@@ -46,9 +47,77 @@ interface AppContextValue extends AppState {
 export const BASE_STORAGE_KEY = 'saldopilot-state-v1';
 const AppContext = createContext<AppContextValue | null>(null);
 
-export function AppProvider({ children, storageKey = BASE_STORAGE_KEY }: { children: ReactNode; storageKey?: string }) {
+export function AppProvider({
+  children,
+  storageKey = BASE_STORAGE_KEY,
+  userId,
+}: {
+  children: ReactNode;
+  storageKey?: string;
+  userId?: string;
+}) {
   const [state, setState] = useLocalStorage<AppState>(storageKey, initialState);
+  const [cloudStateLoaded, setCloudStateLoaded] = useState(!isSupabaseConfigured || !userId);
+  const lastSyncedState = useRef<string | null>(null);
   const currentState = normalizeState(state);
+
+
+  useEffect(() => {
+    if (!supabaseApi || !userId) {
+      setCloudStateLoaded(true);
+      return;
+    }
+
+    let active = true;
+
+    supabaseApi
+      .getState<AppState>(userId, storageKey)
+      .then((cloudState) => {
+        if (!active) {
+          return;
+        }
+
+        if (cloudState) {
+          const normalizedCloudState = normalizeState(cloudState);
+          lastSyncedState.current = JSON.stringify(normalizedCloudState);
+          setState(normalizedCloudState);
+        }
+
+        setCloudStateLoaded(true);
+      })
+      .catch((error) => {
+        console.error('No se pudo cargar el estado desde Supabase.', error);
+        setCloudStateLoaded(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [setState, storageKey, userId]);
+
+  useEffect(() => {
+    if (!supabaseApi || !userId || !cloudStateLoaded) {
+      return;
+    }
+
+    const api = supabaseApi;
+    const normalizedState = normalizeState(state);
+    const serializedState = JSON.stringify(normalizedState);
+
+    if (lastSyncedState.current === serializedState) {
+      return;
+    }
+
+    lastSyncedState.current = serializedState;
+
+    const syncTimeout = window.setTimeout(() => {
+      api.upsertState(userId, storageKey, normalizedState).catch((error) => {
+        console.error('No se pudo sincronizar el estado con Supabase.', error);
+      });
+    }, 400);
+
+    return () => window.clearTimeout(syncTimeout);
+  }, [cloudStateLoaded, state, storageKey, userId]);
 
   // Al abrir la app, los gastos fijos activos se transforman en movimientos del mes actual.
   useEffect(() => {

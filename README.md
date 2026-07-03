@@ -6,8 +6,28 @@ Administrador personal de ingresos, gastos, presupuestos, gastos fijos y objetiv
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
+
+## Supabase
+
+Saldopilot puede sincronizar la información entre dispositivos usando Supabase. Si las variables de Supabase no están configuradas, la app conserva el modo local con `localStorage`.
+
+1. En Supabase, copia la **Project URL** base. Debe tener este formato: `https://tu-proyecto.supabase.co`. No uses la URL con `/rest/v1/`.
+2. En **Settings → API Keys**, copia la **Publishable key** (`sb_publishable_...`). No uses una secret key ni service role key en el navegador.
+3. En Supabase SQL Editor, ejecuta `supabase/schema.sql` para crear la tabla `user_app_states` y sus políticas RLS.
+4. En Supabase Auth, agrega estas URLs en la configuración de autenticación:
+   - `http://localhost:5173/`
+   - `https://claufrias.github.io/Saldopilot/`
+5. Para desarrollo local, crea `.env` con:
+
+```bash
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_tu_key
+```
+
+6. Para GitHub Pages, agrega esas mismas claves como **Repository variables** en **Settings → Secrets and variables → Actions → Variables**.
 
 ## Publicar en GitHub Pages
 

@@ -1,7 +1,8 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BASE_STORAGE_KEY } from './AppContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
 
 interface StoredUser {
   id: string;
@@ -36,13 +37,32 @@ export function userStateStorageKey(userId: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useLocalStorage<StoredUser[]>(USERS_STORAGE_KEY, []);
   const [sessionUserId, setSessionUserId] = useLocalStorage<string | null>(SESSION_STORAGE_KEY, null);
+  const [supabaseUser, setSupabaseUser] = useState<SessionUser | null>(null);
   const currentStoredUser = users.find((user) => user.id === sessionUserId) ?? null;
+
+  useEffect(() => {
+    if (!supabaseApi) {
+      return;
+    }
+
+    setSupabaseUser(supabaseApi.getSession()?.user ? toSupabaseSessionUser(supabaseApi.getSession()!.user) : null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      users: users.map(toSessionUser),
-      currentUser: currentStoredUser ? toSessionUser(currentStoredUser) : null,
+      users: isSupabaseConfigured ? (supabaseUser ? [supabaseUser] : []) : users.map(toSessionUser),
+      currentUser: isSupabaseConfigured ? supabaseUser : currentStoredUser ? toSessionUser(currentStoredUser) : null,
       login: async (email, password) => {
+        if (supabaseApi) {
+          try {
+            const session = await supabaseApi.signInWithPassword(normalizeEmail(email), password);
+            setSupabaseUser(toSupabaseSessionUser(session.user));
+            return { ok: true };
+          } catch (error) {
+            return { ok: false, message: error instanceof Error ? error.message : 'No se pudo iniciar sesion.' };
+          }
+        }
+
         const normalizedEmail = normalizeEmail(email);
         const user = users.find((item) => item.email === normalizedEmail);
 
@@ -67,6 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: 'Completa nombre, email y una contrasena de al menos 6 caracteres.' };
         }
 
+        if (supabaseApi) {
+          try {
+            const result = await supabaseApi.signUp(normalizedEmail, password, trimmedName);
+
+            if ('access_token' in result) {
+              setSupabaseUser(toSupabaseSessionUser(result.user));
+              return { ok: true };
+            }
+
+            return { ok: true, message: 'Revisa tu email para confirmar la cuenta antes de iniciar sesion.' };
+          } catch (error) {
+            return { ok: false, message: error instanceof Error ? error.message : 'No se pudo crear la cuenta.' };
+          }
+        }
+
         if (users.some((user) => user.email === normalizedEmail)) {
           return { ok: false, message: 'Ya existe un usuario con ese email.' };
         }
@@ -86,9 +121,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return { ok: true };
       },
-      logout: () => setSessionUserId(null),
+      logout: () => {
+        if (supabaseApi) {
+          void supabaseApi.signOut();
+          setSupabaseUser(null);
+          return;
+        }
+
+        setSessionUserId(null);
+      },
     }),
-    [currentStoredUser, setSessionUserId, setUsers, users],
+    [currentStoredUser, setSessionUserId, setUsers, supabaseUser, users],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -116,6 +159,16 @@ function toSessionUser(user: StoredUser): SessionUser {
     id: user.id,
     name: user.name,
     email: user.email,
+  };
+}
+
+function toSupabaseSessionUser(user: { id: string; email?: string; user_metadata?: { name?: string } }): SessionUser {
+  const email = user.email ?? '';
+
+  return {
+    id: user.id,
+    name: user.user_metadata?.name || email.split('@')[0] || 'Usuario',
+    email,
   };
 }
 
