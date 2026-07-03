@@ -15,6 +15,8 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   passwordRecoveryPending: boolean;
+  emailConfirmationPending: boolean;
+  continueAfterEmailConfirmation: () => void;
   recoverPassword: (email: string) => Promise<{ ok: boolean; message?: string }>;
   updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>;
 }
@@ -24,21 +26,34 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SessionUser | null>(null);
   const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
+  const [confirmedUser, setConfirmedUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
     if (!supabaseApi) {
       return;
     }
 
-    if (window.location.hash.includes('type=recovery')) {
+    if (window.location.hash.includes('access_token')) {
       supabaseApi
-        .consumeRecoverySessionFromUrl()
-        .then((session) => {
-          if (session?.user) {
-            setPasswordRecoveryPending(true);
+        .consumeAuthSessionFromUrl()
+        .then((result) => {
+          if (!result?.session.user) {
+            return;
           }
+
+          if (result.type === 'recovery') {
+            setPasswordRecoveryPending(true);
+            return;
+          }
+
+          setConfirmedUser(toSupabaseSessionUser(result.session.user));
+          setEmailConfirmationPending(true);
         })
-        .catch(() => setPasswordRecoveryPending(false));
+        .catch(() => {
+          setPasswordRecoveryPending(false);
+          setEmailConfirmationPending(false);
+        });
       return;
     }
 
@@ -49,8 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       users: supabaseUser ? [supabaseUser] : [],
-      currentUser: passwordRecoveryPending ? null : supabaseUser,
+      currentUser: passwordRecoveryPending || emailConfirmationPending ? null : supabaseUser,
       passwordRecoveryPending,
+      emailConfirmationPending,
       login: async (email, password) => {
         if (!supabaseApi) {
           return { ok: false, message: missingSupabaseMessage() };
@@ -88,6 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo crear la cuenta.' };
         }
+      },
+      continueAfterEmailConfirmation: () => {
+        setSupabaseUser(confirmedUser);
+        setConfirmedUser(null);
+        setEmailConfirmationPending(false);
       },
       recoverPassword: async (email) => {
         if (!supabaseApi) {
@@ -128,10 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: () => {
         void supabaseApi?.signOut();
         setPasswordRecoveryPending(false);
+        setEmailConfirmationPending(false);
+        setConfirmedUser(null);
         setSupabaseUser(null);
       },
     }),
-    [passwordRecoveryPending, supabaseUser],
+    [confirmedUser, emailConfirmationPending, passwordRecoveryPending, supabaseUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

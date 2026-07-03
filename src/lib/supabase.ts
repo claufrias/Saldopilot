@@ -76,15 +76,16 @@ export const supabaseApi = isSupabaseConfigured
       getSession() {
         return getStoredSession();
       },
-      async consumeRecoverySessionFromUrl() {
+      async consumeAuthSessionFromUrl() {
         const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 
-        if (hash.get('type') !== 'recovery' || !hash.get('access_token')) {
+        if (!hash.get('access_token')) {
           return null;
         }
 
         const accessToken = hash.get('access_token') ?? '';
         const refreshToken = hash.get('refresh_token') ?? undefined;
+        const type = hash.get('type') ?? 'session';
         const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
           headers: authHeaders(accessToken),
         });
@@ -92,7 +93,7 @@ export const supabaseApi = isSupabaseConfigured
         const session = { access_token: accessToken, refresh_token: refreshToken, user };
         storeSession(session);
         window.history.replaceState(null, document.title, appRedirectUrl());
-        return session;
+        return { session, type };
       },
       async signInWithPassword(email: string, password: string) {
         const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
@@ -105,7 +106,7 @@ export const supabaseApi = isSupabaseConfigured
         return session;
       },
       async signUp(email: string, password: string, name: string) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        const response = await fetch(`${supabaseUrl}/auth/v1/signup?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({
@@ -134,13 +135,10 @@ export const supabaseApi = isSupabaseConfigured
         return { user: result as SupabaseAuthUser };
       },
       async recoverPassword(email: string) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+        const response = await fetch(`${supabaseUrl}/auth/v1/recover?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({
-            email,
-            redirect_to: appRedirectUrl(),
-          }),
+          body: JSON.stringify({ email }),
         });
 
         await parseResponse<unknown>(response);
@@ -200,11 +198,11 @@ export const supabaseApi = isSupabaseConfigured
           return;
         }
 
-        const response = await fetch(`${supabaseUrl}/rest/v1/user_app_states`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/user_app_states?on_conflict=user_id,state_key`, {
           method: 'POST',
           headers: {
             ...authHeaders(session.access_token),
-            Prefer: 'resolution=merge-duplicates',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
           },
           body: JSON.stringify({
             user_id: userId,

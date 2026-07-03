@@ -4,11 +4,22 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../lib/supabase';
 
-type AuthMode = 'login' | 'register' | 'recover' | 'reset';
+const authBackgroundUrl = `${import.meta.env.BASE_URL}auth-background.svg`;
+
+type AuthMode = 'login' | 'register' | 'recover' | 'reset' | 'confirmed';
 
 export function Auth() {
-  const { users, login, register, recoverPassword, updatePassword, passwordRecoveryPending } = useAuth();
-  const [mode, setMode] = useState<AuthMode>(passwordRecoveryPending ? 'reset' : users.length === 0 ? 'register' : 'login');
+  const {
+    users,
+    login,
+    register,
+    recoverPassword,
+    updatePassword,
+    passwordRecoveryPending,
+    emailConfirmationPending,
+    continueAfterEmailConfirmation,
+  } = useAuth();
+  const [mode, setMode] = useState<AuthMode>(emailConfirmationPending ? 'confirmed' : passwordRecoveryPending ? 'reset' : users.length === 0 ? 'register' : 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,17 +29,28 @@ export function Auth() {
   const isRegister = mode === 'register';
   const isRecover = mode === 'recover';
   const isReset = mode === 'reset';
+  const isConfirmed = mode === 'confirmed';
 
   useEffect(() => {
+    if (emailConfirmationPending) {
+      setMode('confirmed');
+      return;
+    }
+
     if (passwordRecoveryPending) {
       setMode('reset');
     }
-  }, [passwordRecoveryPending]);
+  }, [emailConfirmationPending, passwordRecoveryPending]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setSuccess('');
+    if (isConfirmed) {
+      continueAfterEmailConfirmation();
+      return;
+    }
+
     setLoading(true);
 
     const result = isReset
@@ -61,10 +83,20 @@ export function Auth() {
     setSuccess('');
   }
 
-  const title = isReset ? 'Cambiar contraseña' : isRecover ? 'Recuperar contraseña' : isRegister ? 'Crear acceso' : 'Entrar a Saldopilot';
-  const description = isReset
-    ? 'Ingresa una nueva contraseña para completar la recuperación por email.'
-    : isRecover
+  const title = isConfirmed
+    ? 'Email confirmado'
+    : isReset
+      ? 'Cambiar contraseña'
+      : isRecover
+        ? 'Recuperar contraseña'
+        : isRegister
+          ? 'Crear acceso'
+          : 'Entrar a Saldopilot';
+  const description = isConfirmed
+    ? 'Tu correo fue confirmado correctamente. Ya podés entrar a Saldopilot.'
+    : isReset
+      ? 'Ingresa una nueva contraseña para completar la recuperación por email.'
+      : isRecover
       ? 'Te enviaremos un email para confirmar el cambio de contraseña.'
       : isRegister
         ? 'Crea una cuenta sincronizada con Supabase para usar tus datos en varios dispositivos.'
@@ -72,7 +104,12 @@ export function Auth() {
 
   return (
     <main className="grid min-h-screen bg-stone-50 p-4 dark:bg-zinc-950 lg:grid-cols-[1fr_520px]">
-      <section className="hidden min-h-[calc(100vh-2rem)] flex-col justify-between rounded-xl bg-zinc-950 p-10 text-white lg:flex">
+      <section
+        className="hidden min-h-[calc(100vh-2rem)] flex-col justify-between overflow-hidden rounded-xl bg-zinc-950 bg-cover bg-center p-10 text-white lg:flex"
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(9, 9, 11, 0.96) 0%, rgba(9, 9, 11, 0.82) 42%, rgba(9, 9, 11, 0.36) 100%), url(${authBackgroundUrl})`,
+        }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-zinc-950">
             <PiggyBank className="h-5 w-5" />
@@ -111,7 +148,7 @@ export function Auth() {
           </div>
 
           <div className="panel p-5 sm:p-6">
-            {!isReset ? (
+            {!isReset && !isConfirmed ? (
               <div className="flex rounded-lg bg-zinc-100 p-1 dark:bg-white/10">
                 <button
                   type="button"
@@ -141,7 +178,7 @@ export function Auth() {
             <div className="mt-6">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200">
-                  {isRecover || isReset ? <KeyRound className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
+                  {isRecover || isReset || isConfirmed ? <KeyRound className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-zinc-950 dark:text-white">{title}</h1>
@@ -150,13 +187,13 @@ export function Auth() {
               </div>
 
               <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-                {isRegister ? (
+                {isRegister && !isConfirmed ? (
                   <div>
                     <label className="label">Nombre</label>
                     <input className="field mt-2" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
                   </div>
                 ) : null}
-                {!isReset ? (
+                {!isReset && !isConfirmed ? (
                   <div>
                     <label className="label">Email</label>
                     <input
@@ -168,7 +205,7 @@ export function Auth() {
                     />
                   </div>
                 ) : null}
-                {!isRecover ? (
+                {!isRecover && !isConfirmed ? (
                   <div>
                     <label className="label">Contraseña</label>
                     <input
@@ -193,12 +230,12 @@ export function Auth() {
                   </div>
                 ) : null}
 
-                <Button className="w-full" icon={isRegister ? <UserPlus className="h-4 w-4" /> : isRecover || isReset ? <KeyRound className="h-4 w-4" /> : <LogIn className="h-4 w-4" />} disabled={loading}>
-                  {loading ? 'Procesando...' : isReset ? 'Guardar contraseña' : isRecover ? 'Enviar email' : isRegister ? 'Crear usuario' : 'Ingresar'}
+                <Button className="w-full" icon={isRegister ? <UserPlus className="h-4 w-4" /> : isRecover || isReset || isConfirmed ? <KeyRound className="h-4 w-4" /> : <LogIn className="h-4 w-4" />} disabled={loading}>
+                  {loading ? 'Procesando...' : isConfirmed ? 'Continuar' : isReset ? 'Guardar contraseña' : isRecover ? 'Enviar email' : isRegister ? 'Crear usuario' : 'Ingresar'}
                 </Button>
               </form>
 
-              {!isRegister && !isRecover && !isReset ? (
+              {!isRegister && !isRecover && !isReset && !isConfirmed ? (
                 <button className="mt-4 text-sm font-semibold text-zinc-600 underline dark:text-zinc-300" type="button" onClick={() => changeMode('recover')}>
                   Olvidé mi contraseña
                 </button>
