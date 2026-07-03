@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1000" role="img" aria-label="Saldopilot graffiti finance background">
+  <defs>
+    <radialGradient id="blueGlow" cx="78%" cy="18%" r="48%">
+      <stop offset="0" stop-color="#2563eb" stop-opacity="0.95" />
+      <stop offset="1" stop-color="#111827" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="pinkGlow" cx="70%" cy="72%" r="45%">
+      <stop offset="0" stop-color="#db2777" stop-opacity="0.85" />
+      <stop offset="1" stop-color="#111827" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="4" fill="#f8fafc" opacity="0.75" />
+    </pattern>
+    <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="8" result="noise" />
+      <feColorMatrix in="noise" type="saturate" values="0" />
+      <feBlend in="SourceGraphic" mode="multiply" />
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="18" flood-color="#000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <rect width="1800" height="1000" fill="#09090b" />
+  <rect width="1800" height="1000" fill="url(#blueGlow)" />
+  <rect width="1800" height="1000" fill="url(#pinkGlow)" />
+  <rect width="1800" height="1000" fill="url(#dots)" opacity="0.18" />
+
+  <g filter="url(#rough)">
+    <path d="M-70 120 C150 60 250 165 430 95 C610 25 740 90 890 40 L980 220 C755 310 620 190 450 280 C270 375 135 250 -35 335 Z" fill="#f5f5dc" opacity="0.9" />
+    <path d="M1110 -40 L1840 0 L1820 280 C1650 245 1515 185 1370 238 C1225 292 1158 178 1030 188 Z" fill="#0b5cff" opacity="0.85" />
+    <path d="M915 645 C1080 515 1258 605 1395 522 C1540 435 1695 515 1845 462 L1860 750 C1605 810 1438 720 1288 795 C1120 878 1010 772 855 895 Z" fill="#c026d3" opacity="0.78" />
+    <path d="M-80 805 C110 725 250 815 400 720 C570 612 700 730 850 680 L900 1015 L-80 1015 Z" fill="#e11d8f" opacity="0.78" />
+    <path d="M1210 120 L1450 80 L1365 245 L1565 245 L1295 520 L1380 325 L1190 320 Z" fill="#7c3aed" opacity="0.92" />
+    <path d="M250 40 L392 85 L342 135 L440 160 L285 185 L315 118 Z" fill="#111827" opacity="0.88" />
+    <path d="M1370 610 L1515 640 L1455 700 L1560 735 L1370 755 L1415 675 Z" fill="#111827" opacity="0.9" />
+  </g>
+
+  <g opacity="0.95">
+    <path d="M120 315 l145 -65 l-32 54 l130 38 l-22 42 l-130 -38 l24 62 z" fill="none" stroke="#f8fafc" stroke-width="8" stroke-linejoin="round" opacity="0.82" />
+    <path d="M540 760 l150 -80 l-36 60 l132 34 l-20 44 l-132 -34 l26 65 z" fill="none" stroke="#f8fafc" stroke-width="8" stroke-linejoin="round" opacity="0.78" />
+    <path d="M735 150 l80 45 l80 -45" stroke="#d4a72c" stroke-width="16" stroke-linecap="round" opacity="0.9" />
+    <path d="M780 105 l35 90 l35 -90" stroke="#d4a72c" stroke-width="16" stroke-linecap="round" opacity="0.9" />
+  </g>
+
+  <g filter="url(#shadow)">
+    <circle cx="1240" cy="500" r="270" fill="#f4efe5" opacity="0.93" />
+    <circle cx="1240" cy="500" r="232" fill="#111" />
+    <circle cx="1240" cy="500" r="184" fill="none" stroke="#d4a72c" stroke-width="18" />
+    <path d="M930 468 h185 v65 H930 z" fill="#111" />
+    <path d="M1365 468 h255 v65 h-255 z" fill="#111" />
+    <path d="M895 468 h170 v32 h-170 zM895 530 h170 v32 h-170 zM1442 468 h170 v32 h-170 zM1442 530 h170 v32 h-170 z" fill="#d4a72c" />
+    <text x="1240" y="620" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="390" font-weight="900" fill="#f4efe5">S</text>
+    <path d="M1240 264 l20 42 h-40zM1240 736 l20 -42h-40z" fill="#d4a72c" />
+  </g>
+
+  <g font-family="Arial Black, Impact, sans-serif" text-anchor="middle" filter="url(#shadow)">
+    <g transform="translate(160 740) rotate(-14)">
+      <circle r="72" fill="#111" stroke="#d4a72c" stroke-width="14" />
+      <text y="28" font-size="86" fill="#d4a72c">$</text>
+    </g>
+    <g transform="translate(480 880) rotate(10)">
+      <circle r="72" fill="#f8fafc" stroke="#111" stroke-width="14" />
+      <text y="28" font-size="86" fill="#111">$</text>
+    </g>
+    <g transform="translate(1585 805) rotate(-10)">
+      <circle r="76" fill="#f8fafc" stroke="#111" stroke-width="14" />
+      <text y="30" font-size="90" fill="#111">$</text>
+    </g>
+    <g transform="translate(1518 170) rotate(18)">
+      <circle r="70" fill="#111" stroke="#52525b" stroke-width="12" />
+      <text y="27" font-size="82" fill="#d4a72c">$</text>
+    </g>
+  </g>
+
+  <g stroke="#050505" stroke-width="16" stroke-linecap="round" opacity="0.9">
+    <path d="M1630 190 q90 60 120 180" fill="none" />
+    <path d="M1660 210 l35 35M1695 210 l-35 35M1740 275 l35 35M1775 275 l-35 35" />
+    <path d="M1655 345 q55 55 120 0" fill="none" />
+  </g>
+</svg>

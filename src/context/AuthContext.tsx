@@ -1,15 +1,6 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { BASE_STORAGE_KEY } from './AppContext';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-
-interface StoredUser {
-  id: string;
-  name: string;
-  email: string;
-  passwordHash: string;
-  createdAt: string;
-}
+import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
 
 interface SessionUser {
   id: string;
@@ -23,43 +14,77 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
+  passwordRecoveryPending: boolean;
+  emailConfirmationPending: boolean;
+  continueAfterEmailConfirmation: () => void;
+  recoverPassword: (email: string) => Promise<{ ok: boolean; message?: string }>;
+  updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
-const USERS_STORAGE_KEY = 'saldopilot-users-v1';
-const SESSION_STORAGE_KEY = 'saldopilot-session-v1';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function userStateStorageKey(userId: string) {
-  return `${BASE_STORAGE_KEY}-user-${userId}`;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useLocalStorage<StoredUser[]>(USERS_STORAGE_KEY, []);
-  const [sessionUserId, setSessionUserId] = useLocalStorage<string | null>(SESSION_STORAGE_KEY, null);
-  const currentStoredUser = users.find((user) => user.id === sessionUserId) ?? null;
+  const [supabaseUser, setSupabaseUser] = useState<SessionUser | null>(null);
+  const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
+  const [confirmedUser, setConfirmedUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    if (!supabaseApi) {
+      return;
+    }
+
+    if (window.location.hash.includes('access_token')) {
+      supabaseApi
+        .consumeAuthSessionFromUrl()
+        .then((result) => {
+          if (!result?.session.user) {
+            return;
+          }
+
+          if (result.type === 'recovery') {
+            setPasswordRecoveryPending(true);
+            return;
+          }
+
+          setConfirmedUser(toSupabaseSessionUser(result.session.user));
+          setEmailConfirmationPending(true);
+        })
+        .catch(() => {
+          setPasswordRecoveryPending(false);
+          setEmailConfirmationPending(false);
+        });
+      return;
+    }
+
+    const session = supabaseApi.getSession();
+    setSupabaseUser(session?.user ? toSupabaseSessionUser(session.user) : null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      users: users.map(toSessionUser),
-      currentUser: currentStoredUser ? toSessionUser(currentStoredUser) : null,
+      users: supabaseUser ? [supabaseUser] : [],
+      currentUser: passwordRecoveryPending || emailConfirmationPending ? null : supabaseUser,
+      passwordRecoveryPending,
+      emailConfirmationPending,
       login: async (email, password) => {
-        const normalizedEmail = normalizeEmail(email);
-        const user = users.find((item) => item.email === normalizedEmail);
-
-        if (!user) {
-          return { ok: false, message: 'No existe un usuario con ese email.' };
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
         }
 
-        const passwordHash = await hashPassword(password);
-
-        if (passwordHash !== user.passwordHash) {
-          return { ok: false, message: 'La contrasena no es correcta.' };
+        try {
+          const session = await supabaseApi.signInWithPassword(normalizeEmail(email), password);
+          setSupabaseUser(toSupabaseSessionUser(session.user));
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo iniciar sesion.' };
         }
-
-        setSessionUserId(user.id);
-        return { ok: true };
       },
       register: async (name, email, password) => {
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
+        }
+
         const trimmedName = name.trim();
         const normalizedEmail = normalizeEmail(email);
 
@@ -67,69 +92,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: 'Completa nombre, email y una contrasena de al menos 6 caracteres.' };
         }
 
-        if (users.some((user) => user.email === normalizedEmail)) {
-          return { ok: false, message: 'Ya existe un usuario con ese email.' };
+        try {
+          const result = await supabaseApi.signUp(normalizedEmail, password, trimmedName);
+
+          if ('access_token' in result) {
+            setSupabaseUser(toSupabaseSessionUser(result.user));
+            return { ok: true };
+          }
+
+          return { ok: true, message: 'Revisa tu email para confirmar la cuenta antes de iniciar sesion.' };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo crear la cuenta.' };
+        }
+      },
+      continueAfterEmailConfirmation: () => {
+        setSupabaseUser(confirmedUser);
+        setConfirmedUser(null);
+        setEmailConfirmationPending(false);
+      },
+      recoverPassword: async (email) => {
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
         }
 
-        const id = generateUserId();
-        const nextUser: StoredUser = {
-          id,
-          name: trimmedName,
-          email: normalizedEmail,
-          passwordHash: await hashPassword(password),
-          createdAt: new Date().toISOString(),
-        };
+        const normalizedEmail = normalizeEmail(email);
 
-        migrateLegacyStateToFirstUser(id, users.length === 0);
-        setUsers((current) => [nextUser, ...current]);
-        setSessionUserId(id);
+        if (!normalizedEmail) {
+          return { ok: false, message: 'Ingresa tu email para recuperar la contrasena.' };
+        }
 
-        return { ok: true };
+        try {
+          await supabaseApi.recoverPassword(normalizedEmail);
+          return { ok: true, message: 'Te enviamos un email para confirmar el cambio de contrasena.' };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo enviar el email.' };
+        }
       },
-      logout: () => setSessionUserId(null),
+      updatePassword: async (password) => {
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
+        }
+
+        if (password.length < 6) {
+          return { ok: false, message: 'La contrasena debe tener al menos 6 caracteres.' };
+        }
+
+        try {
+          const session = await supabaseApi.updatePassword(password);
+          setPasswordRecoveryPending(false);
+          setSupabaseUser(toSupabaseSessionUser(session.user));
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo actualizar la contrasena.' };
+        }
+      },
+      logout: () => {
+        void supabaseApi?.signOut();
+        setPasswordRecoveryPending(false);
+        setEmailConfirmationPending(false);
+        setConfirmedUser(null);
+        setSupabaseUser(null);
+      },
     }),
-    [currentStoredUser, setSessionUserId, setUsers, users],
+    [confirmedUser, emailConfirmationPending, passwordRecoveryPending, supabaseUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-function migrateLegacyStateToFirstUser(userId: string, shouldMigrate: boolean) {
-  if (!shouldMigrate) {
-    return;
+
+function translateSupabaseAuthError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes('email signups are disabled')) {
+    return 'El registro por email esta deshabilitado en Supabase. Activalo en Authentication > Sign In / Providers > Email.';
   }
 
-  const legacyState = localStorage.getItem(BASE_STORAGE_KEY);
-  const userKey = userStateStorageKey(userId);
-
-  if (legacyState && !localStorage.getItem(userKey)) {
-    localStorage.setItem(userKey, legacyState);
+  if (normalizedMessage.includes('invalid login credentials')) {
+    return 'Email o contrasena incorrectos.';
   }
+
+  if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered')) {
+    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contrasena desde Supabase.';
+  }
+
+  return message;
+}
+
+function missingSupabaseMessage() {
+  return 'Supabase no esta configurado. Agrega VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY y vuelve a desplegar la app.';
 }
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function toSessionUser(user: StoredUser): SessionUser {
+function toSupabaseSessionUser(user: { id: string; email?: string; user_metadata?: { name?: string } }): SessionUser {
+  const email = user.email ?? '';
+
   return {
     id: user.id,
-    name: user.name,
-    email: user.email,
+    name: user.user_metadata?.name || email.split('@')[0] || 'Usuario',
+    email,
   };
-}
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(password));
-
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function generateUserId() {
-  return `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function useAuth() {
@@ -141,3 +206,5 @@ export function useAuth() {
 
   return context;
 }
+
+export { isSupabaseConfigured };
