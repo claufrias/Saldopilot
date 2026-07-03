@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../lib/supabase';
 
-const authBackgroundUrl = `${import.meta.env.BASE_URL}auth-background.svg`;
+const authBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio.svg`;
 
 type AuthMode = 'login' | 'register' | 'recover' | 'reset' | 'confirmed';
 
