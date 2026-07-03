@@ -65,7 +65,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const body = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(body?.msg || body?.message || body?.error_description || 'Supabase request failed');
+    throw new Error(body?.msg || body?.message || body?.error_description || 'No se pudo completar la solicitud.');
   }
 
   return body as T;

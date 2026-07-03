@@ -165,7 +165,7 @@ function translateSupabaseAuthError(message: string) {
   const normalizedMessage = message.toLowerCase();
 
   if (normalizedMessage.includes('email signups are disabled')) {
-    return 'El registro por email esta deshabilitado en Supabase. Activalo en Authentication > Sign In / Providers > Email.';
+    return 'El registro por email esta deshabilitado. Activalo en la configuracion de autenticacion.';
   }
 
   if (normalizedMessage.includes('invalid login credentials')) {
@@ -173,14 +173,14 @@ function translateSupabaseAuthError(message: string) {
   }
 
   if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered')) {
-    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contrasena desde Supabase.';
+    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contrasena.';
   }
 
   return message;
 }
 
 function missingSupabaseMessage() {
-  return 'Supabase no esta configurado. Agrega VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY y vuelve a desplegar la app.';
+  return 'El servicio de acceso y sincronizacion no esta configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
 }
 
 function normalizeEmail(email: string) {

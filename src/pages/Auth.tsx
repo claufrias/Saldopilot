@@ -100,8 +100,8 @@ export function Auth() {
       : isRecover
       ? 'Te enviaremos un email para confirmar el cambio de contraseña.'
       : isRegister
-        ? 'Crea una cuenta sincronizada con Supabase para usar tus datos en varios dispositivos.'
-        : 'Usa tu email y contrasena de Supabase.';
+        ? 'Crea una cuenta sincronizada para usar tus datos en varios dispositivos.'
+        : 'Usa tu email y contrasena.';
 
   return (
     <main className="relative grid min-h-screen overflow-hidden bg-stone-50 p-4 dark:bg-zinc-950 lg:grid-cols-[1fr_520px]">
@@ -137,7 +137,7 @@ export function Auth() {
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-sm">
-          <AuthPill label="Supabase" />
+          <AuthPill label="Cuenta segura" />
           <AuthPill label="Sesion persistente" />
           <AuthPill label="Sincronizacion cloud" />
         </div>
@@ -253,8 +253,8 @@ export function Auth() {
 
           <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
             {isSupabaseConfigured
-              ? 'Conectado a Supabase: el login y los datos se sincronizan entre dispositivos.'
-              : 'Supabase no esta configurado: agrega las variables de entorno y vuelve a desplegar.'}
+              ? 'Tus datos se sincronizan entre dispositivos.'
+              : 'El servicio de acceso y sincronizacion no esta configurado.'}
           </p>
         </div>
       </section>

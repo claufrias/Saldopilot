@@ -99,7 +99,7 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
         setCloudStateLoaded(true);
       })
       .catch((error) => {
-        console.error('No se pudo cargar el estado desde Supabase.', error);
+        console.error('No se pudo cargar el estado sincronizado.', error);
         setCloudStateLoaded(true);
       });
 
@@ -129,7 +129,7 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
           lastSyncedState.current = serializedState;
         })
         .catch((error) => {
-          console.error('No se pudo sincronizar el estado con Supabase.', error);
+          console.error('No se pudo sincronizar el estado.', error);
         });
     }, 400);
     syncTimeout.current = nextSyncTimeout;
@@ -158,7 +158,7 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
     document.documentElement.classList.toggle('dark', currentState.theme === 'dark');
   }, [currentState.theme]);
 
-  // Todas las mutaciones pasan por este contexto y se sincronizan con Supabase.
+  // Todas las mutaciones pasan por este contexto y se sincronizan en la nube.
   const value = useMemo<AppContextValue>(
     () => ({
       ...currentState,

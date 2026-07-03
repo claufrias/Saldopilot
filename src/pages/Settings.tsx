@@ -165,7 +165,7 @@ export function Settings() {
 
       <section className="panel p-5">
         <h2 className="text-lg font-bold text-zinc-950 dark:text-white">Datos</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toda la información se sincroniza con Supabase para tu usuario.</p>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toda la información se sincroniza con tu cuenta.</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button icon={<Download className="h-4 w-4" />} onClick={exportData}>
             Exportar JSON
