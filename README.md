@@ -12,7 +12,7 @@ npm run dev
 
 ## Supabase
 
-Saldopilot puede sincronizar la información entre dispositivos usando Supabase. Si las variables de Supabase no están configuradas, la app conserva el modo local con `localStorage`.
+Saldopilot sincroniza la información entre dispositivos usando Supabase. Las variables de Supabase son obligatorias para iniciar sesión y guardar datos.
 
 1. En Supabase, copia la **Project URL** base. Debe tener este formato: `https://tu-proyecto.supabase.co`. No uses la URL con `/rest/v1/`.
 2. En **Settings → API Keys**, copia la **Publishable key** (`sb_publishable_...`). No uses una secret key ni service role key en el navegador.

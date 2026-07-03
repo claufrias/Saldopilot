@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { initialState } from '../data/sampleData';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
 import type {
   AppCategory,
@@ -44,19 +43,11 @@ interface AppContextValue extends AppState {
   resetState: () => void;
 }
 
-export const BASE_STORAGE_KEY = 'saldopilot-state-v1';
+const CLOUD_STATE_KEY = 'default';
 const AppContext = createContext<AppContextValue | null>(null);
 
-export function AppProvider({
-  children,
-  storageKey = BASE_STORAGE_KEY,
-  userId,
-}: {
-  children: ReactNode;
-  storageKey?: string;
-  userId?: string;
-}) {
-  const [state, setState] = useLocalStorage<AppState>(storageKey, initialState);
+export function AppProvider({ children, userId }: { children: ReactNode; userId?: string }) {
+  const [state, setState] = useState<AppState>(initialState);
   const [cloudStateLoaded, setCloudStateLoaded] = useState(!isSupabaseConfigured || !userId);
   const lastSyncedState = useRef<string | null>(null);
   const currentState = normalizeState(state);
@@ -71,7 +62,7 @@ export function AppProvider({
     let active = true;
 
     supabaseApi
-      .getState<AppState>(userId, storageKey)
+      .getState<AppState>(userId, CLOUD_STATE_KEY)
       .then((cloudState) => {
         if (!active) {
           return;
@@ -93,7 +84,7 @@ export function AppProvider({
     return () => {
       active = false;
     };
-  }, [setState, storageKey, userId]);
+  }, [userId]);
 
   useEffect(() => {
     if (!supabaseApi || !userId || !cloudStateLoaded) {
@@ -111,13 +102,13 @@ export function AppProvider({
     lastSyncedState.current = serializedState;
 
     const syncTimeout = window.setTimeout(() => {
-      api.upsertState(userId, storageKey, normalizedState).catch((error) => {
+      api.upsertState(userId, CLOUD_STATE_KEY, normalizedState).catch((error) => {
         console.error('No se pudo sincronizar el estado con Supabase.', error);
       });
     }, 400);
 
     return () => window.clearTimeout(syncTimeout);
-  }, [cloudStateLoaded, state, storageKey, userId]);
+  }, [cloudStateLoaded, state, userId]);
 
   // Al abrir la app, los gastos fijos activos se transforman en movimientos del mes actual.
   useEffect(() => {
@@ -135,7 +126,7 @@ export function AppProvider({
     document.documentElement.classList.toggle('dark', currentState.theme === 'dark');
   }, [currentState.theme]);
 
-  // Todas las mutaciones pasan por este contexto para mantener LocalStorage como única fuente persistente.
+  // Todas las mutaciones pasan por este contexto y se sincronizan con Supabase.
   const value = useMemo<AppContextValue>(
     () => ({
       ...currentState,

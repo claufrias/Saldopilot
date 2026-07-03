@@ -1,6 +1,6 @@
 const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
-const AUTH_TOKEN_STORAGE_KEY = 'saldopilot-supabase-auth-v1';
+const AUTH_TOKEN_STORAGE_KEY = 'saldopilot-supabase-session-v1';
 
 interface SupabaseAuthUser {
   id: string;
@@ -16,6 +16,13 @@ interface SupabaseAuthSession {
   user: SupabaseAuthUser;
 }
 
+interface SupabaseSignUpResponse {
+  access_token?: string;
+  refresh_token?: string;
+  user?: SupabaseAuthUser;
+  session?: SupabaseAuthSession | null;
+}
+
 function normalizeSupabaseUrl(url: string) {
   return url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 }
@@ -25,7 +32,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 function getStoredSession() {
   try {
-    const storedSession = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    const storedSession = sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     return storedSession ? (JSON.parse(storedSession) as SupabaseAuthSession) : null;
   } catch {
     return null;
@@ -34,11 +41,11 @@ function getStoredSession() {
 
 function storeSession(session: SupabaseAuthSession | null) {
   if (!session) {
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
     return;
   }
 
-  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify(session));
+  sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify(session));
 }
 
 function authHeaders(accessToken?: string) {
@@ -85,14 +92,24 @@ export const supabaseApi = isSupabaseConfigured
             data: { name },
           }),
         });
-        const session = await parseResponse<SupabaseAuthSession | SupabaseAuthUser>(response);
+        const result = await parseResponse<SupabaseAuthSession | SupabaseSignUpResponse | SupabaseAuthUser>(response);
 
-        if ('access_token' in session) {
+        if ('access_token' in result && result.access_token && result.user) {
+          const session = result as SupabaseAuthSession;
           storeSession(session);
           return session;
         }
 
-        return { user: session };
+        if ('session' in result && result.session) {
+          storeSession(result.session);
+          return result.session;
+        }
+
+        if ('user' in result && result.user) {
+          return { user: result.user };
+        }
+
+        return { user: result as SupabaseAuthUser };
       },
       async signOut() {
         const session = getStoredSession();
