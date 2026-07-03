@@ -56,6 +56,10 @@ function authHeaders(accessToken?: string) {
   };
 }
 
+function appRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
@@ -71,6 +75,24 @@ export const supabaseApi = isSupabaseConfigured
   ? {
       getSession() {
         return getStoredSession();
+      },
+      async consumeRecoverySessionFromUrl() {
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+        if (hash.get('type') !== 'recovery' || !hash.get('access_token')) {
+          return null;
+        }
+
+        const accessToken = hash.get('access_token') ?? '';
+        const refreshToken = hash.get('refresh_token') ?? undefined;
+        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: authHeaders(accessToken),
+        });
+        const user = await parseResponse<SupabaseAuthUser>(response);
+        const session = { access_token: accessToken, refresh_token: refreshToken, user };
+        storeSession(session);
+        window.history.replaceState(null, document.title, appRedirectUrl());
+        return session;
       },
       async signInWithPassword(email: string, password: string) {
         const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
@@ -110,6 +132,35 @@ export const supabaseApi = isSupabaseConfigured
         }
 
         return { user: result as SupabaseAuthUser };
+      },
+      async recoverPassword(email: string) {
+        const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            email,
+            redirect_to: appRedirectUrl(),
+          }),
+        });
+
+        await parseResponse<unknown>(response);
+      },
+      async updatePassword(password: string) {
+        const session = getStoredSession();
+
+        if (!session) {
+          throw new Error('No hay una sesion de recuperacion activa. Abre el enlace enviado por email nuevamente.');
+        }
+
+        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          method: 'PUT',
+          headers: authHeaders(session.access_token),
+          body: JSON.stringify({ password }),
+        });
+        const user = await parseResponse<SupabaseAuthUser>(response);
+        const nextSession = { ...session, user };
+        storeSession(nextSession);
+        return nextSession;
       },
       async signOut() {
         const session = getStoredSession();

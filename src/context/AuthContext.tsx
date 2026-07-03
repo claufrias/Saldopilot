@@ -14,22 +14,43 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
+  passwordRecoveryPending: boolean;
+  recoverPassword: (email: string) => Promise<{ ok: boolean; message?: string }>;
+  updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SessionUser | null>(null);
+  const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
 
   useEffect(() => {
-    const session = supabaseApi?.getSession();
+    if (!supabaseApi) {
+      return;
+    }
+
+    if (window.location.hash.includes('type=recovery')) {
+      supabaseApi
+        .consumeRecoverySessionFromUrl()
+        .then((session) => {
+          if (session?.user) {
+            setPasswordRecoveryPending(true);
+          }
+        })
+        .catch(() => setPasswordRecoveryPending(false));
+      return;
+    }
+
+    const session = supabaseApi.getSession();
     setSupabaseUser(session?.user ? toSupabaseSessionUser(session.user) : null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       users: supabaseUser ? [supabaseUser] : [],
-      currentUser: supabaseUser,
+      currentUser: passwordRecoveryPending ? null : supabaseUser,
+      passwordRecoveryPending,
       login: async (email, password) => {
         if (!supabaseApi) {
           return { ok: false, message: missingSupabaseMessage() };
@@ -40,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSupabaseUser(toSupabaseSessionUser(session.user));
           return { ok: true };
         } catch (error) {
-          return { ok: false, message: error instanceof Error ? error.message : 'No se pudo iniciar sesion.' };
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo iniciar sesion.' };
         }
       },
       register: async (name, email, password) => {
@@ -65,18 +86,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           return { ok: true, message: 'Revisa tu email para confirmar la cuenta antes de iniciar sesion.' };
         } catch (error) {
-          return { ok: false, message: error instanceof Error ? error.message : 'No se pudo crear la cuenta.' };
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo crear la cuenta.' };
+        }
+      },
+      recoverPassword: async (email) => {
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!normalizedEmail) {
+          return { ok: false, message: 'Ingresa tu email para recuperar la contrasena.' };
+        }
+
+        try {
+          await supabaseApi.recoverPassword(normalizedEmail);
+          return { ok: true, message: 'Te enviamos un email para confirmar el cambio de contrasena.' };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo enviar el email.' };
+        }
+      },
+      updatePassword: async (password) => {
+        if (!supabaseApi) {
+          return { ok: false, message: missingSupabaseMessage() };
+        }
+
+        if (password.length < 6) {
+          return { ok: false, message: 'La contrasena debe tener al menos 6 caracteres.' };
+        }
+
+        try {
+          const session = await supabaseApi.updatePassword(password);
+          setPasswordRecoveryPending(false);
+          setSupabaseUser(toSupabaseSessionUser(session.user));
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo actualizar la contrasena.' };
         }
       },
       logout: () => {
         void supabaseApi?.signOut();
+        setPasswordRecoveryPending(false);
         setSupabaseUser(null);
       },
     }),
-    [supabaseUser],
+    [passwordRecoveryPending, supabaseUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+
+function translateSupabaseAuthError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes('email signups are disabled')) {
+    return 'El registro por email esta deshabilitado en Supabase. Activalo en Authentication > Sign In / Providers > Email.';
+  }
+
+  if (normalizedMessage.includes('invalid login credentials')) {
+    return 'Email o contrasena incorrectos.';
+  }
+
+  if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered')) {
+    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contrasena desde Supabase.';
+  }
+
+  return message;
 }
 
 function missingSupabaseMessage() {
