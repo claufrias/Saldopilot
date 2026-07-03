@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { AppProvider } from './context/AppContext';
-import { useAuth, userStateStorageKey } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { Auth } from './pages/Auth';
 import { Budgets } from './pages/Budgets';
 import { CreditCards } from './pages/CreditCards';
@@ -21,7 +21,7 @@ export default function App() {
   }
 
   return (
-    <AppProvider key={currentUser.id} storageKey={userStateStorageKey(currentUser.id)}>
+    <AppProvider key={currentUser.id} userId={currentUser.id}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
