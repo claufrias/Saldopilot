@@ -14,7 +14,8 @@ import {
   Target,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -46,6 +47,11 @@ export function AppLayout() {
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [fabPosition, setFabPosition] = useState<{ x: number; y: number } | null>(null);
+  const [fabDragging, setFabDragging] = useState(false);
+  const fabPressTimer = useRef<number | null>(null);
+  const fabPointerOffset = useRef({ x: 0, y: 0 });
+  const fabMoved = useRef(false);
 
   useEffect(() => {
     const updateOnline = () => setOnline(navigator.onLine);
@@ -57,6 +63,89 @@ export function AppLayout() {
       window.removeEventListener('offline', updateOnline);
     };
   }, []);
+
+  useEffect(() => {
+    const storedPosition = window.localStorage.getItem('saldopilot-fab-position-v1');
+
+    if (storedPosition) {
+      try {
+        setFabPosition(clampFabPosition(JSON.parse(storedPosition) as { x: number; y: number }));
+        return;
+      } catch {
+        window.localStorage.removeItem('saldopilot-fab-position-v1');
+      }
+    }
+
+    setFabPosition(defaultFabPosition());
+  }, []);
+
+  useEffect(() => {
+    const updatePosition = () => setFabPosition((current) => (current ? clampFabPosition(current) : defaultFabPosition()));
+    window.addEventListener('resize', updatePosition);
+
+    return () => window.removeEventListener('resize', updatePosition);
+  }, []);
+
+  function clearFabTimer() {
+    if (fabPressTimer.current !== null) {
+      window.clearTimeout(fabPressTimer.current);
+      fabPressTimer.current = null;
+    }
+  }
+
+  function saveFabPosition(position: { x: number; y: number }) {
+    const nextPosition = clampFabPosition(position);
+    setFabPosition(nextPosition);
+    window.localStorage.setItem('saldopilot-fab-position-v1', JSON.stringify(nextPosition));
+  }
+
+  function handleFabPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    if (window.matchMedia('(min-width: 1280px)').matches) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    fabPointerOffset.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+    fabMoved.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    clearFabTimer();
+    fabPressTimer.current = window.setTimeout(() => {
+      setFabDragging(true);
+    }, 350);
+  }
+
+  function handleFabPointerMove(event: PointerEvent<HTMLButtonElement>) {
+    if (!fabDragging) {
+      return;
+    }
+
+    fabMoved.current = true;
+    saveFabPosition({
+      x: event.clientX - fabPointerOffset.current.x,
+      y: event.clientY - fabPointerOffset.current.y,
+    });
+  }
+
+  function handleFabPointerUp(event: PointerEvent<HTMLButtonElement>) {
+    clearFabTimer();
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (fabDragging) {
+      setFabDragging(false);
+      return;
+    }
+
+    if (!fabMoved.current) {
+      setQuickActionOpen(true);
+    }
+  }
 
   const handleLogout = async () => {
     if (loggingOut) {
@@ -187,9 +276,15 @@ export function AppLayout() {
 
       <button
         type="button"
-        className="fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-950 text-white shadow-2xl shadow-zinc-950/30 active:scale-95 dark:bg-white dark:text-zinc-950 xl:hidden"
-        style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom))' }}
-        onClick={() => setQuickActionOpen(true)}
+        className={`fixed z-30 flex h-14 w-14 touch-none items-center justify-center rounded-lg bg-zinc-950 text-white shadow-2xl shadow-zinc-950/30 transition-transform dark:bg-white dark:text-zinc-950 xl:hidden ${fabDragging ? 'scale-110 ring-4 ring-zinc-950/15 dark:ring-white/20' : 'active:scale-95'}`}
+        style={fabPosition ? { left: fabPosition.x, top: fabPosition.y } : { right: '1rem', bottom: 'calc(5.25rem + env(safe-area-inset-bottom))' }}
+        onPointerDown={handleFabPointerDown}
+        onPointerMove={handleFabPointerMove}
+        onPointerUp={handleFabPointerUp}
+        onPointerCancel={() => {
+          clearFabTimer();
+          setFabDragging(false);
+        }}
         aria-label="Abrir acción rápida"
       >
         <Plus className="h-6 w-6" />
@@ -210,6 +305,26 @@ function SyncIndicator({ status, online }: { status: 'idle' | 'saving' | 'saved'
       {label}
     </div>
   );
+}
+
+function defaultFabPosition() {
+  return clampFabPosition({
+    x: window.innerWidth - 72,
+    y: window.innerHeight - 156,
+  });
+}
+
+function clampFabPosition(position: { x: number; y: number }) {
+  const size = 56;
+  const margin = 12;
+  const bottomNavSpace = 88;
+  const maxX = Math.max(margin, window.innerWidth - size - margin);
+  const maxY = Math.max(margin, window.innerHeight - size - bottomNavSpace);
+
+  return {
+    x: Math.min(maxX, Math.max(margin, position.x)),
+    y: Math.min(maxY, Math.max(margin, position.y)),
+  };
 }
 
 function SessionCard({

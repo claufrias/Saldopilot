@@ -1,5 +1,5 @@
 import { Edit3, Plus, Trash2 } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { CategoryIcon, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { CategoryPicker } from '../components/category/CategoryPicker';
 import { Button } from '../components/ui/Button';
@@ -20,6 +20,13 @@ export function RecurringExpenses() {
   const { recurringExpenses, categories, addRecurringExpense, updateRecurringExpense, deleteRecurringExpense } = useApp();
   const [form, setForm] = useState(emptyRecurring);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
+
+  function focusForm() {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => descriptionInputRef.current?.focus(), 350);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,7 +70,7 @@ export function RecurringExpenses() {
         description="Registra gastos recurrentes. Al abrir la app en un nuevo mes se crea automáticamente el movimiento correspondiente."
       />
 
-      <form className="panel grid gap-4 p-5 lg:grid-cols-6" onSubmit={submit}>
+      <form ref={formRef} className="panel grid gap-4 p-5 lg:grid-cols-6" onSubmit={submit}>
         <div className="lg:col-span-6">
           <label className="label">Categoría</label>
           <div className="mt-2">
@@ -72,7 +79,7 @@ export function RecurringExpenses() {
         </div>
         <div className="lg:col-span-2">
           <label className="label">Descripción</label>
-          <input className="field mt-2" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+          <input ref={descriptionInputRef} className="field mt-2" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
         </div>
         <div>
           <label className="label">Monto</label>
@@ -143,7 +150,7 @@ export function RecurringExpenses() {
             <button
               type="button"
               className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onClick={focusForm}
             >
               Agregar gasto fijo
             </button>

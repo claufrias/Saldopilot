@@ -442,8 +442,9 @@ function MovementRow({
   onEdit: (movement: Movement) => void;
   onDelete: (id: string) => void;
 }) {
-  const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
   const categoryTone = getCategoryColorFor(categories, movement.category);
   const isIncome = movement.type === 'income';
   const amountClassName = isIncome ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
@@ -457,7 +458,8 @@ function MovementRow({
   function finishSwipe() {
     if (!canSwipe || isDesktopGesture()) {
       setDragOffset(0);
-      setDragStartX(null);
+      setDragStart(null);
+      setIsSwiping(false);
       return;
     }
 
@@ -470,7 +472,8 @@ function MovementRow({
     }
 
     setDragOffset(0);
-    setDragStartX(null);
+    setDragStart(null);
+    setIsSwiping(false);
   }
 
   return (
@@ -485,24 +488,42 @@ function MovementRow({
         className={`panel relative border-l-4 p-3.5 transition-transform md:grid md:gap-4 md:border-x-0 md:border-b-0 md:border-r-0 md:p-4 md:grid-cols-[1fr_auto_auto] md:items-center md:rounded-none md:shadow-none ${
           movement.type === 'expense' ? `${categoryTone.border} ${categoryTone.soft}` : 'border-emerald-200 dark:border-emerald-500/30'
         }`}
-        style={{ transform: `translateX(${dragOffset}px)` }}
-        onPointerDown={(event) => {
+        style={{ transform: `translateX(${dragOffset}px)`, touchAction: 'pan-y' }}
+        onTouchStart={(event) => {
           if (!canSwipe || isDesktopGesture()) {
             return;
           }
 
-          setDragStartX(event.clientX);
+          const touch = event.touches[0];
+          setDragStart({ x: touch.clientX, y: touch.clientY });
+          setIsSwiping(false);
         }}
-        onPointerMove={(event) => {
-          if (dragStartX === null || !canSwipe || isDesktopGesture()) {
+        onTouchMove={(event) => {
+          if (!dragStart || !canSwipe || isDesktopGesture()) {
             return;
           }
 
-          const nextOffset = Math.max(-112, Math.min(112, event.clientX - dragStartX));
+          const touch = event.touches[0];
+          const deltaX = touch.clientX - dragStart.x;
+          const deltaY = touch.clientY - dragStart.y;
+
+          if (!isSwiping && Math.abs(deltaX) < 10) {
+            return;
+          }
+
+          if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
+            setDragStart(null);
+            return;
+          }
+
+          event.preventDefault();
+          setIsSwiping(true);
+
+          const nextOffset = Math.max(-112, Math.min(112, deltaX));
           setDragOffset(nextOffset);
         }}
-        onPointerUp={finishSwipe}
-        onPointerCancel={finishSwipe}
+        onTouchEnd={finishSwipe}
+        onTouchCancel={finishSwipe}
       >
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-3 md:hidden">
