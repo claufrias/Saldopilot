@@ -102,7 +102,7 @@ export function RecurringExpenses() {
       </form>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        {recurringExpenses.map((expense) => {
+        {recurringExpenses.length > 0 ? recurringExpenses.map((expense) => {
           const categoryTone = getCategoryColorFor(categories, expense.category);
 
           return (
@@ -134,7 +134,21 @@ export function RecurringExpenses() {
             </div>
           </article>
           );
-        })}
+        }) : (
+          <div className="panel px-4 py-10 text-center lg:col-span-2">
+            <p className="text-sm font-bold text-zinc-950 dark:text-white">Todavía no hay gastos fijos</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              Carga alquiler, servicios o suscripciones para anticipar tus salidas mensuales.
+            </p>
+            <button
+              type="button"
+              className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              Agregar gasto fijo
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

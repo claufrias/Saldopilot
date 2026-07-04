@@ -147,7 +147,7 @@ export const supabaseApi = isSupabaseConfigured
         const session = getStoredSession();
 
         if (!session) {
-          throw new Error('No hay una sesion de recuperacion activa. Abre el enlace enviado por email nuevamente.');
+          throw new Error('No hay una sesión de recuperación activa. Abre el enlace enviado por email nuevamente.');
         }
 
         const response = await fetch(`${supabaseUrl}/auth/v1/user`, {

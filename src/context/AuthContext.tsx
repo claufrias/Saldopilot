@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSupabaseUser(toSupabaseSessionUser(session.user));
           return { ok: true };
         } catch (error) {
-          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo iniciar sesion.' };
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo iniciar sesión.' };
         }
       },
       register: async (name, email, password) => {
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const normalizedEmail = normalizeEmail(email);
 
         if (!trimmedName || !normalizedEmail || password.length < 6) {
-          return { ok: false, message: 'Completa nombre, email y una contrasena de al menos 6 caracteres.' };
+          return { ok: false, message: 'Completa nombre, email y una contraseña de al menos 6 caracteres.' };
         }
 
         try {
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { ok: true };
           }
 
-          return { ok: true, message: 'Revisa tu email para confirmar la cuenta antes de iniciar sesion.' };
+          return { ok: true, message: 'Revisa tu email para confirmar la cuenta antes de iniciar sesión.' };
         } catch (error) {
           return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo crear la cuenta.' };
         }
@@ -118,12 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const normalizedEmail = normalizeEmail(email);
 
         if (!normalizedEmail) {
-          return { ok: false, message: 'Ingresa tu email para recuperar la contrasena.' };
+          return { ok: false, message: 'Ingresa tu email para recuperar la contraseña.' };
         }
 
         try {
           await supabaseApi.recoverPassword(normalizedEmail);
-          return { ok: true, message: 'Te enviamos un email para confirmar el cambio de contrasena.' };
+          return { ok: true, message: 'Te enviamos un email para confirmar el cambio de contraseña.' };
         } catch (error) {
           return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo enviar el email.' };
         }
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (password.length < 6) {
-          return { ok: false, message: 'La contrasena debe tener al menos 6 caracteres.' };
+          return { ok: false, message: 'La contraseña debe tener al menos 6 caracteres.' };
         }
 
         try {
@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSupabaseUser(toSupabaseSessionUser(session.user));
           return { ok: true };
         } catch (error) {
-          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo actualizar la contrasena.' };
+          return { ok: false, message: error instanceof Error ? translateSupabaseAuthError(error.message) : 'No se pudo actualizar la contraseña.' };
         }
       },
       logout: async () => {
@@ -165,22 +165,22 @@ function translateSupabaseAuthError(message: string) {
   const normalizedMessage = message.toLowerCase();
 
   if (normalizedMessage.includes('email signups are disabled')) {
-    return 'El registro por email esta deshabilitado. Activalo en la configuracion de autenticacion.';
+    return 'El registro por email está deshabilitado. Actívalo en la configuración de autenticación.';
   }
 
   if (normalizedMessage.includes('invalid login credentials')) {
-    return 'Email o contrasena incorrectos.';
+    return 'Email o contraseña incorrectos.';
   }
 
   if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered')) {
-    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contrasena.';
+    return 'Ya existe un usuario con ese email. Usa Ingresar o recupera la contraseña.';
   }
 
   return message;
 }
 
 function missingSupabaseMessage() {
-  return 'El servicio de acceso y sincronizacion no esta configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
+  return 'El servicio de acceso y sincronización no está configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
 }
 
 function normalizeEmail(email: string) {

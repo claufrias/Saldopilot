@@ -1,5 +1,5 @@
 import { Check, CreditCardIcon, Edit3, Plus, Trash2 } from 'lucide-react';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -53,6 +53,7 @@ export function CreditCards() {
     updateCreditCardPayment,
     deleteCreditCardPayment,
   } = useApp();
+  const cardFormRef = useRef<HTMLFormElement | null>(null);
   const [cardForm, setCardForm] = useState(emptyCard);
   const operationalMovements = getOperationalMovements(movements, financialStart.date);
   const operationalPayments = creditCardPayments.filter((payment) => payment.date >= financialStart.date);
@@ -173,7 +174,7 @@ export function CreditCards() {
       />
 
       <section>
-        <form className="panel grid gap-4 p-5 md:grid-cols-4" onSubmit={submitCard}>
+        <form ref={cardFormRef} className="panel grid gap-4 p-5 md:grid-cols-4" onSubmit={submitCard}>
           <div className="md:col-span-4">
             <p className="label">{editingCardId ? 'Editar tarjeta' : 'Crear nueva tarjeta'}</p>
           </div>
@@ -406,8 +407,18 @@ export function CreditCards() {
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Todavía no hay tarjetas creadas.
+          <div className="p-8 text-center">
+            <p className="text-sm font-bold text-zinc-950 dark:text-white">Todavía no hay tarjetas creadas</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              Crea una tarjeta para registrar consumos, pagos y próximos vencimientos.
+            </p>
+            <button
+              type="button"
+              className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
+              onClick={() => cardFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Crear tarjeta
+            </button>
           </div>
         )}
       </section>

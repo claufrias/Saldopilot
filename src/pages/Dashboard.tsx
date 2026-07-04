@@ -28,6 +28,11 @@ export function Dashboard() {
   const totalExpenses = sumByType(monthMovements, 'expense');
   const balance = getBalance(operationalMovements, financialStart.balance);
   const dueNextMonth = getTotalDueNextMonth(creditCards, operationalMovements);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayExpenses = displayMovements
+    .filter((movement) => movement.date === todayKey && movement.type === 'expense' && movement.movementKind !== 'credit_card_payment')
+    .reduce((total, movement) => total + movement.amount, 0);
+  const nextDue = getNextCardDue(creditCards, operationalMovements, creditCardPayments);
   const primaryGoal = savingsGoals[0];
   const goalProgress = primaryGoal ? percentage(primaryGoal.currentAmount, primaryGoal.targetAmount) : 0;
   const goalTone = primaryGoal ? getGoalColor(primaryGoal.color) : getGoalColor('emerald');
@@ -57,7 +62,14 @@ export function Dashboard() {
         description="Una vista clara del mes, tus movimientos recientes y el avance de tus objetivos."
       />
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <MobileTodaySummary
+        balance={balance}
+        todayExpenses={todayExpenses}
+        nextDue={nextDue}
+        latestMovement={latest[0]}
+      />
+
+      <section className="hidden grid-cols-2 gap-3 sm:grid sm:gap-4 xl:grid-cols-4">
         <Metric title="Saldo actual" value={formatCurrency(balance)} icon={<WalletCards className="h-5 w-5" />} tone="zinc" />
         <Metric title="Ingresos del mes" value={formatCurrency(totalIncome)} icon={<ArrowUpRight className="h-5 w-5" />} tone="emerald" />
         <Metric title="Gastos pagados" value={formatCurrency(totalExpenses)} icon={<ArrowDownRight className="h-5 w-5" />} tone="rose" />
@@ -143,7 +155,7 @@ export function Dashboard() {
             <p className="label">Últimos movimientos</p>
           </div>
           <div className="divide-y divide-zinc-200/80 dark:divide-white/10">
-            {latest.map((movement) => {
+            {latest.length > 0 ? latest.map((movement) => {
               const amountClassName = movement.type === 'income' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
 
               return (
@@ -163,10 +175,91 @@ export function Dashboard() {
                 </p>
               </div>
               );
-            })}
+            }) : (
+              <EmptyAction
+                title="Todavía no hay movimientos"
+                description="Carga tu primer ingreso o gasto para que el resumen empiece a tomar forma."
+                to="/movimientos"
+                label="Agregar primer movimiento"
+              />
+            )}
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function MobileTodaySummary({
+  balance,
+  todayExpenses,
+  nextDue,
+  latestMovement,
+}: {
+  balance: number;
+  todayExpenses: number;
+  nextDue: ReturnType<typeof getNextCardDue>;
+  latestMovement?: ReturnType<typeof getMovementsWithFinancialStart>[number];
+}) {
+  return (
+    <section className="panel overflow-hidden md:hidden">
+      <div className="bg-zinc-950 p-4 text-white dark:bg-white dark:text-zinc-950">
+        <p className="text-xs font-bold uppercase tracking-wide opacity-70">Hoy</p>
+        <p className="mt-2 text-3xl font-extrabold">{formatCurrency(balance)}</p>
+        <p className="mt-1 text-sm opacity-70">Saldo actual</p>
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-zinc-200/80 dark:divide-white/10">
+        <MobileTodayItem label="Gasto de hoy" value={formatCurrency(todayExpenses)} tone="rose" />
+        <MobileTodayItem
+          label="Próximo vencimiento"
+          value={nextDue ? formatCurrency(nextDue.amount) : 'Sin vencimientos'}
+          tone="amber"
+          detail={nextDue ? formatDate(nextDue.date) : undefined}
+        />
+      </div>
+      <div className="border-t border-zinc-200/80 p-4 dark:border-white/10">
+        <p className="label">Último movimiento</p>
+        {latestMovement ? (
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-zinc-950 dark:text-white">{latestMovement.description}</p>
+              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{formatDateTime(latestMovement.date, latestMovement.time)}</p>
+            </div>
+            <p className={`shrink-0 text-sm font-extrabold ${latestMovement.type === 'income' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'}`}>
+              {latestMovement.type === 'income' ? '+' : '-'}
+              {formatCurrency(latestMovement.amount)}
+            </p>
+          </div>
+        ) : (
+          <Link className="mt-2 inline-flex text-sm font-bold text-zinc-950 underline dark:text-white" to="/movimientos">
+            Agregar primer movimiento
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MobileTodayItem({ label, value, tone, detail }: { label: string; value: string; tone: 'rose' | 'amber'; detail?: string }) {
+  const toneClassName = tone === 'rose' ? 'text-rose-600 dark:text-rose-300' : 'text-amber-600 dark:text-amber-300';
+
+  return (
+    <div className="p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className={`mt-1 truncate text-base font-extrabold ${toneClassName}`}>{value}</p>
+      {detail ? <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{detail}</p> : null}
+    </div>
+  );
+}
+
+function EmptyAction({ title, description, to, label }: { title: string; description: string; to: string; label: string }) {
+  return (
+    <div className="px-4 py-10 text-center">
+      <p className="text-sm font-bold text-zinc-950 dark:text-white">{title}</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
+      <Link className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950" to={to}>
+        {label}
+      </Link>
     </div>
   );
 }

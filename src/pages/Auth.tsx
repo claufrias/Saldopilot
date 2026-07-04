@@ -65,7 +65,7 @@ export function Auth() {
     setLoading(false);
 
     if (!result.ok) {
-      setError(result.message ?? 'No se pudo completar la accion.');
+      setError(result.message ?? 'No se pudo completar la acción.');
       return;
     }
 
@@ -101,7 +101,7 @@ export function Auth() {
       ? 'Te enviaremos un email para confirmar el cambio de contraseña.'
       : isRegister
         ? 'Crea una cuenta sincronizada para usar tus datos en varios dispositivos.'
-        : 'Usa tu email y contrasena.';
+        : 'Usa tu email y contraseña.';
 
   return (
     <main className="relative grid min-h-screen overflow-hidden bg-stone-50 p-4 dark:bg-zinc-950 lg:grid-cols-[1fr_520px]">
@@ -254,7 +254,7 @@ export function Auth() {
           <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
             {isSupabaseConfigured
               ? 'Tus datos se sincronizan entre dispositivos.'
-              : 'El servicio de acceso y sincronizacion no esta configurado.'}
+              : 'El servicio de acceso y sincronización no está configurado.'}
           </p>
         </div>
       </section>

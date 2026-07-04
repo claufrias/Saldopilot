@@ -103,11 +103,11 @@ export function Movements() {
 
   function captureLocation() {
     if (!navigator.geolocation) {
-      setLocationStatus('Ubicacion no disponible en este navegador.');
+      setLocationStatus('Ubicación no disponible en este navegador.');
       return;
     }
 
-    setLocationStatus('Obteniendo ubicacion...');
+    setLocationStatus('Obteniendo ubicación...');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setForm((current) => ({
@@ -119,10 +119,10 @@ export function Movements() {
             capturedAt: new Date().toISOString(),
           },
         }));
-        setLocationStatus('Ubicacion guardada para este movimiento.');
+        setLocationStatus('Ubicación guardada para este movimiento.');
       },
       () => {
-        setLocationStatus('No se pudo obtener la ubicacion.');
+        setLocationStatus('No se pudo obtener la ubicación.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
@@ -199,7 +199,7 @@ export function Movements() {
             disabled={form.type === 'income'}
             onChange={(event) => setForm({ ...form, paymentMethod: event.target.value as PaymentMethod, creditCardId: '' })}
           >
-            <option value="cash">Efectivo / Debito</option>
+            <option value="cash">Efectivo / Débito</option>
             <option value="credit">Tarjeta</option>
           </select>
         </div>
@@ -235,7 +235,7 @@ export function Movements() {
           </select>
         </div>
         <div className="lg:col-span-2">
-          <label className="label">Ubicacion</label>
+          <label className="label">Ubicación</label>
           <div className="mt-2 flex gap-2">
             <Button
               type="button"
@@ -245,7 +245,7 @@ export function Movements() {
               onClick={captureLocation}
               disabled={form.type !== 'expense'}
             >
-              Usar ubicacion
+              Usar ubicación
             </Button>
             {form.location ? (
               <button
@@ -255,7 +255,7 @@ export function Movements() {
                   setForm({ ...form, location: undefined });
                   setLocationStatus('');
                 }}
-                aria-label="Quitar ubicacion"
+                aria-label="Quitar ubicación"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -362,7 +362,7 @@ export function Movements() {
               ))}
             </select>
             <select className="field" value={filters.year} onChange={(event) => setFilters({ ...filters, year: event.target.value })}>
-              <option value="all">Todos los anos</option>
+              <option value="all">Todos los años</option>
               {years.map((year) => (
                 <option key={year} value={year}>
                   {year}
@@ -370,7 +370,7 @@ export function Movements() {
               ))}
             </select>
             <select className="field" value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })}>
-              <option value="all">Todas las categorias</option>
+              <option value="all">Todas las categorías</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.name}>
                   {category.name}
@@ -400,22 +400,22 @@ export function Movements() {
               />
             ))
           ) : (
-            <div className="panel px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400 md:border-0 md:shadow-none">
-              No hay movimientos para estos filtros.
+            <div className="panel px-4 py-10 text-center md:border-0 md:shadow-none">
+              <p className="text-sm font-bold text-zinc-950 dark:text-white">No hay movimientos</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+                Prueba cambiar los filtros o carga tu primer movimiento.
+              </p>
+              <button
+                type="button"
+                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
+                onClick={openCreateMovement}
+              >
+                Agregar primer movimiento
+              </button>
             </div>
           )}
         </div>
       </section>
-
-      <button
-        type="button"
-        className="fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-950 text-white shadow-2xl shadow-zinc-950/30 active:scale-95 dark:bg-white dark:text-zinc-950 md:hidden"
-        style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom))' }}
-        onClick={openCreateMovement}
-        aria-label="Agregar movimiento"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
     </div>
   );
 }
@@ -442,17 +442,68 @@ function MovementRow({
   onEdit: (movement: Movement) => void;
   onDelete: (id: string) => void;
 }) {
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
   const categoryTone = getCategoryColorFor(categories, movement.category);
   const isIncome = movement.type === 'income';
   const amountClassName = isIncome ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
   const cardName = creditCards.find((card) => card.id === movement.creditCardId)?.name ?? 'Tarjeta';
+  const canSwipe = movement.movementKind !== 'opening_balance';
+
+  function isDesktopGesture() {
+    return typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+  }
+
+  function finishSwipe() {
+    if (!canSwipe || isDesktopGesture()) {
+      setDragOffset(0);
+      setDragStartX(null);
+      return;
+    }
+
+    if (dragOffset > 88) {
+      onEdit(movement);
+    }
+
+    if (dragOffset < -88) {
+      onDelete(movement.id);
+    }
+
+    setDragOffset(0);
+    setDragStartX(null);
+  }
 
   return (
-    <article
-      className={`panel border-l-4 p-3.5 md:grid md:gap-4 md:border-x-0 md:border-b-0 md:border-r-0 md:p-4 md:grid-cols-[1fr_auto_auto] md:items-center md:rounded-none md:shadow-none ${
-        movement.type === 'expense' ? `${categoryTone.border} ${categoryTone.soft}` : 'border-emerald-200 dark:border-emerald-500/30'
-      }`}
-    >
+    <div className="relative overflow-hidden rounded-lg md:rounded-none">
+      {canSwipe ? (
+        <div className="absolute inset-0 flex items-center justify-between px-5 md:hidden">
+          <span className="text-xs font-bold text-sky-600 dark:text-sky-300">Editar</span>
+          <span className="text-xs font-bold text-rose-600 dark:text-rose-300">Borrar</span>
+        </div>
+      ) : null}
+      <article
+        className={`panel relative border-l-4 p-3.5 transition-transform md:grid md:gap-4 md:border-x-0 md:border-b-0 md:border-r-0 md:p-4 md:grid-cols-[1fr_auto_auto] md:items-center md:rounded-none md:shadow-none ${
+          movement.type === 'expense' ? `${categoryTone.border} ${categoryTone.soft}` : 'border-emerald-200 dark:border-emerald-500/30'
+        }`}
+        style={{ transform: `translateX(${dragOffset}px)` }}
+        onPointerDown={(event) => {
+          if (!canSwipe || isDesktopGesture()) {
+            return;
+          }
+
+          setDragStartX(event.clientX);
+        }}
+        onPointerMove={(event) => {
+          if (dragStartX === null || !canSwipe || isDesktopGesture()) {
+            return;
+          }
+
+          const nextOffset = Math.max(-112, Math.min(112, event.clientX - dragStartX));
+          setDragOffset(nextOffset);
+        }}
+        onPointerUp={finishSwipe}
+        onPointerCancel={finishSwipe}
+      >
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-3 md:hidden">
           <div className="min-w-0">
@@ -513,7 +564,8 @@ function MovementRow({
           </button>
         </div>
       )}
-    </article>
+      </article>
+    </div>
   );
 }
 
@@ -530,7 +582,7 @@ function LocationLink({ movement }: { movement: Movement }) {
       rel="noreferrer"
     >
       <MapPin className="h-3.5 w-3.5" />
-      Ver ubicacion
+      Ver ubicación
     </a>
   );
 }

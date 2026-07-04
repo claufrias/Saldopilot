@@ -16,6 +16,8 @@ import type {
 import { DEFAULT_CATEGORIES } from '../data/constants';
 import { generateId, materializeRecurringExpenses } from '../utils/finance';
 
+type CloudSyncStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 interface AppContextValue extends AppState {
   addMovement: (movement: Omit<Movement, 'id'>) => void;
   updateMovement: (movement: Movement) => void;
@@ -42,6 +44,7 @@ interface AppContextValue extends AppState {
   importState: (state: AppState) => void;
   resetState: () => void;
   syncCloudStateNow: () => Promise<void>;
+  cloudSyncStatus: CloudSyncStatus;
 }
 
 const CLOUD_STATE_KEY = 'default';
@@ -50,12 +53,14 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children, userId }: { children: ReactNode; userId?: string }) {
   const [state, setState] = useState<AppState>(initialState);
   const [cloudStateLoaded, setCloudStateLoaded] = useState(!isSupabaseConfigured || !userId);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('idle');
   const lastSyncedState = useRef<string | null>(null);
   const syncTimeout = useRef<number | null>(null);
   const currentState = normalizeState(state);
 
   const syncCloudStateNow = useCallback(async () => {
     if (!supabaseApi || !userId || !cloudStateLoaded) {
+      setCloudSyncStatus('saved');
       return;
     }
 
@@ -68,20 +73,31 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
     const serializedState = JSON.stringify(normalizedState);
 
     if (lastSyncedState.current === serializedState) {
+      setCloudSyncStatus('saved');
       return;
     }
 
-    await supabaseApi.upsertState(userId, CLOUD_STATE_KEY, normalizedState);
-    lastSyncedState.current = serializedState;
+    setCloudSyncStatus('saving');
+
+    try {
+      await supabaseApi.upsertState(userId, CLOUD_STATE_KEY, normalizedState);
+      lastSyncedState.current = serializedState;
+      setCloudSyncStatus('saved');
+    } catch (error) {
+      setCloudSyncStatus('error');
+      throw error;
+    }
   }, [cloudStateLoaded, state, userId]);
 
   useEffect(() => {
     if (!supabaseApi || !userId) {
       setCloudStateLoaded(true);
+      setCloudSyncStatus('saved');
       return;
     }
 
     let active = true;
+    setCloudSyncStatus('saving');
 
     supabaseApi
       .getState<AppState>(userId, CLOUD_STATE_KEY)
@@ -97,10 +113,12 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
         }
 
         setCloudStateLoaded(true);
+        setCloudSyncStatus('saved');
       })
       .catch((error) => {
         console.error('No se pudo cargar el estado sincronizado.', error);
         setCloudStateLoaded(true);
+        setCloudSyncStatus('error');
       });
 
     return () => {
@@ -118,8 +136,11 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
     const serializedState = JSON.stringify(normalizedState);
 
     if (lastSyncedState.current === serializedState) {
+      setCloudSyncStatus('saved');
       return;
     }
+
+    setCloudSyncStatus('saving');
 
     const nextSyncTimeout = window.setTimeout(() => {
       syncTimeout.current = null;
@@ -127,9 +148,11 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
         .upsertState(userId, CLOUD_STATE_KEY, normalizedState)
         .then(() => {
           lastSyncedState.current = serializedState;
+          setCloudSyncStatus('saved');
         })
         .catch((error) => {
           console.error('No se pudo sincronizar el estado.', error);
+          setCloudSyncStatus('error');
         });
     }, 400);
     syncTimeout.current = nextSyncTimeout;
@@ -381,8 +404,9 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
       importState: (nextState) => setState(normalizeState(nextState)),
       resetState: () => setState(initialState),
       syncCloudStateNow,
+      cloudSyncStatus,
     }),
-    [currentState, setState, syncCloudStateNow],
+    [cloudSyncStatus, currentState, setState, syncCloudStateNow],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
