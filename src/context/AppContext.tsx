@@ -40,11 +40,14 @@ interface AppContextValue extends AppState {
   updateCreditCardPayment: (payment: CreditCardPayment) => void;
   deleteCreditCardPayment: (id: string) => void;
   updateFinancialStart: (financialStart: FinancialStart) => void;
+  completeOnboarding: (setup: { balance: number; usesCreditCards: boolean }) => void;
+  setUsesCreditCards: (usesCreditCards: boolean) => void;
   setTheme: (theme: AppState['theme']) => void;
   importState: (state: AppState) => void;
   resetState: () => void;
   syncCloudStateNow: () => Promise<void>;
   cloudSyncStatus: CloudSyncStatus;
+  appReady: boolean;
 }
 
 const CLOUD_STATE_KEY = 'default';
@@ -400,13 +403,29 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
           ...normalizeState(current),
           financialStart,
         })),
+      completeOnboarding: ({ balance, usesCreditCards }) =>
+        setState((current) => ({
+          ...normalizeState(current),
+          onboardingCompleted: true,
+          usesCreditCards,
+          financialStart: {
+            date: new Date().toISOString().slice(0, 10),
+            balance,
+          },
+        })),
+      setUsesCreditCards: (usesCreditCards) =>
+        setState((current) => ({
+          ...normalizeState(current),
+          usesCreditCards,
+        })),
       setTheme: (theme) => setState((current) => ({ ...normalizeState(current), theme })),
       importState: (nextState) => setState(normalizeState(nextState)),
       resetState: () => setState(initialState),
       syncCloudStateNow,
       cloudSyncStatus,
+      appReady: cloudStateLoaded,
     }),
-    [cloudSyncStatus, currentState, setState, syncCloudStateNow],
+    [cloudStateLoaded, cloudSyncStatus, currentState, setState, syncCloudStateNow],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -414,10 +433,22 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
 
 function normalizeState(state: AppState): AppState {
   const categories = normalizeCategories(state);
+  const hasExistingData =
+    (state.movements?.length ?? 0) > 0 ||
+    (state.creditCards?.length ?? 0) > 0 ||
+    (state.creditCardPayments?.length ?? 0) > 0 ||
+    (state.budgets?.length ?? 0) > 0 ||
+    (state.recurringExpenses?.length ?? 0) > 0 ||
+    (state.savingsGoals?.length ?? 0) > 0 ||
+    Math.abs(state.financialStart?.balance ?? 0) > 0;
+  const onboardingCompleted = typeof state.onboardingCompleted === 'boolean' ? state.onboardingCompleted : hasExistingData;
+  const usesCreditCards = typeof state.usesCreditCards === 'boolean' ? state.usesCreditCards : (state.creditCards?.length ?? 0) > 0;
 
   return {
     ...initialState,
     ...state,
+    onboardingCompleted,
+    usesCreditCards,
     movements: (state.movements ?? []).map((movement) => ({
       ...movement,
       paymentMethod: movement.paymentMethod === 'credit' ? 'credit' : 'cash',

@@ -42,7 +42,7 @@ const mobileNavItems = [
 
 export function AppLayout() {
   const { currentUser, logout } = useAuth();
-  const { syncCloudStateNow, cloudSyncStatus } = useApp();
+  const { syncCloudStateNow, cloudSyncStatus, usesCreditCards } = useApp();
   const [open, setOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -164,9 +164,12 @@ export function AppLayout() {
     }
   };
 
+  const visibleNavItems = usesCreditCards ? navItems : navItems.filter((item) => item.to !== '/tarjetas');
+  const visibleMobileNavItems = usesCreditCards ? mobileNavItems : mobileNavItems.filter((item) => item.to !== '/tarjetas');
+
   const nav = (
     <nav className="space-y-1">
-      {navItems.map((item) => (
+      {visibleNavItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -244,8 +247,8 @@ export function AppLayout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200/80 bg-white/92 px-2 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[0_-10px_30px_rgba(24,24,27,0.08)] backdrop-blur-xl xl:hidden dark:border-white/10 dark:bg-zinc-950/92">
-        <div className="grid grid-cols-5 gap-1">
-          {mobileNavItems.map((item) => (
+        <div className={`grid gap-1 ${usesCreditCards ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          {visibleMobileNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

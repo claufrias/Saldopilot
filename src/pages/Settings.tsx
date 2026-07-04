@@ -1,4 +1,4 @@
-import { Download, Moon, RotateCcw, Sun, Upload, WalletCards } from 'lucide-react';
+import { CreditCard, Download, Moon, RotateCcw, Sun, Upload, WalletCards } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -26,6 +26,8 @@ export function Settings() {
 
   function exportData() {
     const snapshot: AppState = {
+      onboardingCompleted: app.onboardingCompleted,
+      usesCreditCards: app.usesCreditCards,
       movements: app.movements,
       categories: app.categories,
       budgets: app.budgets,
@@ -138,6 +140,33 @@ export function Settings() {
         </div>
       </section>
 
+      <section className="panel p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-zinc-950 dark:text-white">Tarjetas</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Ajusta si querés tener tarjetas presentes en tu flujo diario.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-1 dark:bg-white/10">
+            <button
+              className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold ${app.usesCreditCards ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-zinc-500 dark:text-zinc-300'}`}
+              onClick={() => app.setUsesCreditCards(true)}
+            >
+              Sí
+            </button>
+            <button
+              className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold ${!app.usesCreditCards ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-zinc-500 dark:text-zinc-300'}`}
+              onClick={() => app.setUsesCreditCards(false)}
+            >
+              No
+            </button>
+          </div>
+        </div>
+      </section>
       <section className="panel p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

@@ -97,6 +97,8 @@ export interface Filters {
 }
 
 export interface AppState {
+  onboardingCompleted: boolean;
+  usesCreditCards: boolean;
   movements: Movement[];
   categories: AppCategory[];
   budgets: Budget[];

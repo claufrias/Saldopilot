@@ -1,5 +1,5 @@
 import { CalendarClock, CreditCard, Plus, ReceiptText, WalletCards, X } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CategoryPicker } from '../category/CategoryPicker';
 import { Button } from '../ui/Button';
@@ -68,6 +68,18 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
   const [recurringForm, setRecurringForm] = useState(createRecurringForm);
   const [cardForm, setCardForm] = useState(createCardForm);
   const [paymentForm, setPaymentForm] = useState(createPaymentForm);
+
+  useEffect(() => {
+    if (!app.usesCreditCards && (kind === 'card' || kind === 'payment')) {
+      setKind('movement');
+    }
+
+    if (!app.usesCreditCards) {
+      setMovementForm((current) =>
+        current.paymentMethod === 'credit' ? { ...current, paymentMethod: 'cash', creditCardId: '' } : current,
+      );
+    }
+  }, [app.usesCreditCards, kind]);
 
   if (!open) {
     return null;
@@ -174,11 +186,15 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid gap-2 ${app.usesCreditCards ? 'grid-cols-4' : 'grid-cols-2'}`}>
           <QuickActionTab icon={<ReceiptText className="h-4 w-4" />} label="Mov." selected={kind === 'movement'} onClick={() => setKind('movement')} />
           <QuickActionTab icon={<CalendarClock className="h-4 w-4" />} label="Fijo" selected={kind === 'recurring'} onClick={() => setKind('recurring')} />
-          <QuickActionTab icon={<CreditCard className="h-4 w-4" />} label="Tarjeta" selected={kind === 'card'} onClick={() => setKind('card')} />
-          <QuickActionTab icon={<WalletCards className="h-4 w-4" />} label="Pago" selected={kind === 'payment'} onClick={() => setKind('payment')} />
+          {app.usesCreditCards ? (
+            <>
+              <QuickActionTab icon={<CreditCard className="h-4 w-4" />} label="Tarjeta" selected={kind === 'card'} onClick={() => setKind('card')} />
+              <QuickActionTab icon={<WalletCards className="h-4 w-4" />} label="Pago" selected={kind === 'payment'} onClick={() => setKind('payment')} />
+            </>
+          ) : null}
         </div>
 
         {kind === 'movement' ? (
@@ -199,21 +215,23 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
               </Field>
             </div>
             {movementForm.type === 'expense' ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${app.usesCreditCards ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <Field label="Pago">
                   <select className="field mt-2" value={movementForm.paymentMethod} onChange={(event) => setMovementForm({ ...movementForm, paymentMethod: event.target.value as PaymentMethod, creditCardId: '' })}>
                     <option value="cash">Efectivo / Débito</option>
-                    <option value="credit">Tarjeta</option>
+                    {app.usesCreditCards ? <option value="credit">Tarjeta</option> : null}
                   </select>
                 </Field>
-                <Field label="Tarjeta">
-                  <select className="field mt-2" value={movementForm.creditCardId} disabled={movementForm.paymentMethod !== 'credit'} onChange={(event) => setMovementForm({ ...movementForm, creditCardId: event.target.value })}>
-                    <option value="">Sin tarjeta</option>
-                    {app.creditCards.map((card) => (
-                      <option key={card.id} value={card.id}>{card.name}</option>
-                    ))}
-                  </select>
-                </Field>
+                {app.usesCreditCards ? (
+                  <Field label="Tarjeta">
+                    <select className="field mt-2" value={movementForm.creditCardId} disabled={movementForm.paymentMethod !== 'credit'} onChange={(event) => setMovementForm({ ...movementForm, creditCardId: event.target.value })}>
+                      <option value="">Sin tarjeta</option>
+                      {app.creditCards.map((card) => (
+                        <option key={card.id} value={card.id}>{card.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
               </div>
             ) : null}
             <Button icon={<Plus className="h-4 w-4" />}>Crear movimiento</Button>
