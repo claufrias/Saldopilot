@@ -1,4 +1,4 @@
-import { Check, CreditCardIcon, Edit3, Plus, Trash2 } from 'lucide-react';
+import { Check, CreditCardIcon, Edit3, Plus, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { Button } from '../components/ui/Button';
@@ -62,6 +62,9 @@ export function CreditCards() {
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState('');
   const selectedCard = creditCards.find((card) => card.id === selectedCardId) ?? creditCards[0];
+  const [showMobileCardForm, setShowMobileCardForm] = useState(false);
+  const [showMobilePaymentForm, setShowMobilePaymentForm] = useState(false);
+  const [mobileActivityTab, setMobileActivityTab] = useState<'charges' | 'payments'>('charges');
 
   useEffect(() => {
     if (!selectedCardId && creditCards[0]) {
@@ -98,6 +101,7 @@ export function CreditCards() {
 
     setEditingCardId(null);
     setCardForm(emptyCard);
+    setShowMobileCardForm(false);
   }
 
   function submitPayment(event: FormEvent<HTMLFormElement>) {
@@ -126,6 +130,7 @@ export function CreditCards() {
 
     setEditingPaymentId(null);
     setPaymentForm({ ...emptyPayment, creditCardId: cardId });
+    setShowMobilePaymentForm(false);
   }
 
   function editCard(card: CreditCard) {
@@ -140,6 +145,7 @@ export function CreditCards() {
       color: card.color,
       active: card.active,
     });
+    setShowMobileCardForm(true);
   }
 
   function editPayment(payment: CreditCardPayment) {
@@ -151,6 +157,7 @@ export function CreditCards() {
       date: payment.date,
       amount: String(payment.amount),
     });
+    setShowMobilePaymentForm(true);
   }
 
   const selectedSummary = selectedCard ? getCreditCardSummary(selectedCard, operationalMovements, operationalPayments) : null;
@@ -171,10 +178,31 @@ export function CreditCards() {
       <SectionHeader
         title="Tarjetas de crédito"
         description="Anota consumos con tarjeta, pagos realizados y el dinero comprometido para próximos vencimientos."
+        action={
+          <div className="grid grid-cols-2 gap-2 md:hidden">
+            <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={() => setShowMobileCardForm(true)}>
+              Tarjeta
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={<CreditCardIcon className="h-4 w-4" />}
+              disabled={!selectedCard}
+              onClick={() => {
+                if (selectedCard) {
+                  setPaymentForm((current) => ({ ...current, creditCardId: selectedCard.id }));
+                }
+                setShowMobilePaymentForm(true);
+              }}
+            >
+              Pago
+            </Button>
+          </div>
+        }
       />
 
       <section>
-        <form ref={cardFormRef} className="panel grid gap-4 p-5 md:grid-cols-4" onSubmit={submitCard}>
+        <form ref={cardFormRef} className="panel hidden gap-4 p-5 md:grid md:grid-cols-4" onSubmit={submitCard}>
           <div className="md:col-span-4">
             <p className="label">{editingCardId ? 'Editar tarjeta' : 'Crear nueva tarjeta'}</p>
           </div>
@@ -204,30 +232,7 @@ export function CreditCards() {
           </div>
           <div className="md:col-span-2">
             <label className="label">Color</label>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-              {cardColors.map((color) => {
-                const selected = cardForm.color === color.value;
-
-                return (
-                  <button
-                    key={color.value}
-                    type="button"
-                    className={`group relative flex h-14 items-end overflow-hidden rounded-lg bg-gradient-to-br p-2 text-left shadow-sm ring-1 transition ${color.className} ${color.textClassName} ${
-                      selected ? 'ring-2 ring-zinc-950 dark:ring-white' : 'ring-black/10 hover:scale-[1.02]'
-                    }`}
-                    onClick={() => setCardForm({ ...cardForm, color: color.value })}
-                    aria-label={`Elegir color ${color.label}`}
-                  >
-                    <span className="truncate text-[11px] font-bold leading-none drop-shadow-sm">{color.label}</span>
-                    {selected ? (
-                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow-sm">
-                        <Check className="h-3.5 w-3.5" />
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+            <CardColorPicker value={cardForm.color} onChange={(color) => setCardForm({ ...cardForm, color })} />
           </div>
           <label className="flex items-end gap-3 pb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
             <input className="h-4 w-4 accent-zinc-950" type="checkbox" checked={cardForm.active} onChange={(event) => setCardForm({ ...cardForm, active: event.target.checked })} />
@@ -244,6 +249,116 @@ export function CreditCards() {
         </form>
       </section>
 
+      {showMobileCardForm ? (
+        <div className="fixed inset-0 z-40 flex items-end bg-zinc-950/45 px-3 pb-3 backdrop-blur-sm md:hidden" role="dialog" aria-modal="true">
+          <div className="max-h-[88vh] w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-white/10 dark:bg-zinc-950">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-white/20" />
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="label">{editingCardId ? 'Editar' : 'Nueva'}</p>
+                <h2 className="text-lg font-bold text-zinc-950 dark:text-white">{editingCardId ? 'Editar tarjeta' : 'Agregar tarjeta'}</h2>
+              </div>
+              <button
+                className="icon-button h-9 w-9"
+                type="button"
+                onClick={() => {
+                  setShowMobileCardForm(false);
+                  setEditingCardId(null);
+                  setCardForm(emptyCard);
+                }}
+                aria-label="Cerrar formulario de tarjeta"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form className="grid gap-4" onSubmit={submitCard}>
+              <div>
+                <label className="label">Nombre</label>
+                <input className="field mt-2" value={cardForm.name} onChange={(event) => setCardForm({ ...cardForm, name: event.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Banco</label>
+                  <input className="field mt-2" value={cardForm.issuer} onChange={(event) => setCardForm({ ...cardForm, issuer: event.target.value })} />
+                </div>
+                <div>
+                  <label className="label">Últimos 4</label>
+                  <input className="field mt-2" maxLength={4} value={cardForm.lastFour} onChange={(event) => setCardForm({ ...cardForm, lastFour: event.target.value.replace(/\D/g, '') })} />
+                </div>
+              </div>
+              <div>
+                <label className="label">Límite</label>
+                <input className="field mt-2" type="number" min="0" value={cardForm.limit} onChange={(event) => setCardForm({ ...cardForm, limit: event.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Cierre</label>
+                  <input className="field mt-2" type="number" min="1" max="31" value={cardForm.closingDay} onChange={(event) => setCardForm({ ...cardForm, closingDay: Number(event.target.value) })} />
+                </div>
+                <div>
+                  <label className="label">Vencimiento</label>
+                  <input className="field mt-2" type="number" min="1" max="31" value={cardForm.dueDay} onChange={(event) => setCardForm({ ...cardForm, dueDay: Number(event.target.value) })} />
+                </div>
+              </div>
+              <div>
+                <label className="label">Color</label>
+                <CardColorPicker value={cardForm.color} onChange={(color) => setCardForm({ ...cardForm, color })} compact />
+              </div>
+              <label className="flex items-center justify-between rounded-lg border border-zinc-200/80 px-3 py-3 text-sm font-semibold text-zinc-700 dark:border-white/10 dark:text-zinc-200">
+                Activa
+                <input className="h-5 w-5 accent-zinc-950" type="checkbox" checked={cardForm.active} onChange={(event) => setCardForm({ ...cardForm, active: event.target.checked })} />
+              </label>
+              <Button icon={<Plus className="h-4 w-4" />}>{editingCardId ? 'Guardar tarjeta' : 'Agregar tarjeta'}</Button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showMobilePaymentForm && selectedCard ? (
+        <div className="fixed inset-0 z-40 flex items-end bg-zinc-950/45 px-3 pb-3 backdrop-blur-sm md:hidden" role="dialog" aria-modal="true">
+          <div className="max-h-[88vh] w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-white/10 dark:bg-zinc-950">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-white/20" />
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="label">{editingPaymentId ? 'Editar' : 'Nuevo'}</p>
+                <h2 className="text-lg font-bold text-zinc-950 dark:text-white">{editingPaymentId ? 'Editar pago' : `Pago de ${selectedCard.name}`}</h2>
+              </div>
+              <button
+                className="icon-button h-9 w-9"
+                type="button"
+                onClick={() => {
+                  setShowMobilePaymentForm(false);
+                  setEditingPaymentId(null);
+                  setPaymentForm({ ...emptyPayment, creditCardId: selectedCard.id });
+                }}
+                aria-label="Cerrar formulario de pago"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form className="grid gap-4" onSubmit={submitPayment}>
+              <div>
+                <label className="label">Descripción</label>
+                <input className="field mt-2" value={paymentForm.description} onChange={(event) => setPaymentForm({ ...paymentForm, description: event.target.value, creditCardId: selectedCard.id })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Fecha</label>
+                  <input className="field mt-2" type="date" value={paymentForm.date} onChange={(event) => setPaymentForm({ ...paymentForm, date: event.target.value, creditCardId: selectedCard.id })} />
+                </div>
+                <div>
+                  <label className="label">Monto</label>
+                  <input className="field mt-2" type="number" min="1" value={paymentForm.amount} onChange={(event) => setPaymentForm({ ...paymentForm, amount: event.target.value, creditCardId: selectedCard.id })} />
+                </div>
+              </div>
+              <Button icon={<Plus className="h-4 w-4" />}>{editingPaymentId ? 'Guardar pago' : 'Anotar pago'}</Button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
       <section className="panel overflow-hidden">
         <div className="border-b border-zinc-200/80 p-5 dark:border-white/10">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -254,7 +369,7 @@ export function CreditCards() {
               </h2>
             </div>
             {creditCards.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
                 {creditCards.map((card) => {
                   const usage = Math.min(getCreditCardSummary(card, operationalMovements, operationalPayments).usedLimit, 100);
                   const selected = selectedCard?.id === card.id;
@@ -262,7 +377,7 @@ export function CreditCards() {
                   return (
                     <button
                       key={card.id}
-                      className={`relative inline-flex min-h-11 shrink-0 items-center gap-2 overflow-hidden rounded-lg border px-3 text-sm font-semibold transition ${
+                      className={`relative inline-flex min-h-[3.25rem] min-w-[9.5rem] shrink-0 items-center gap-2 overflow-hidden rounded-lg border px-3 text-sm font-semibold transition md:min-h-11 md:min-w-0 ${
                         selected
                           ? 'border-zinc-950 text-zinc-950 ring-2 ring-zinc-950/10 dark:border-white dark:text-white dark:ring-white/15'
                           : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-950 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white'
@@ -293,8 +408,8 @@ export function CreditCards() {
         {selectedCard && selectedSummary ? (
           <div className="grid gap-0">
             <div className="grid gap-0 xl:grid-cols-[360px_1fr]">
-                <div className={`relative min-h-72 bg-gradient-to-br ${getCardColor(selectedCard.color)} ${getCardTextColor(selectedCard.color)} p-6`}>
-                  <div className="flex h-full min-h-60 flex-col justify-between">
+                <div className={`relative min-h-56 bg-gradient-to-br ${getCardColor(selectedCard.color)} ${getCardTextColor(selectedCard.color)} p-5 md:min-h-72 md:p-6`}>
+                  <div className="flex h-full min-h-48 flex-col justify-between md:min-h-60">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium opacity-75">{selectedCard.issuer || 'Sin banco'}</p>
@@ -328,7 +443,7 @@ export function CreditCards() {
                       <h3 className="mt-2 text-xl font-bold text-zinc-950 dark:text-white">{formatCurrency(selectedSummary.pending)}</h3>
                       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">pendiente anotado</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="hidden gap-2 md:flex">
                       <button className="icon-button" onClick={() => editCard(selectedCard)} aria-label="Editar tarjeta">
                         <Edit3 className="h-4 w-4" />
                       </button>
@@ -352,11 +467,31 @@ export function CreditCards() {
                     </div>
                     <ProgressBar value={Math.min(selectedSummary.usedLimit, 100)} tone={selectedSummary.usedLimit > 90 ? 'rose' : selectedSummary.usedLimit > 70 ? 'amber' : 'sky'} />
                   </div>
+
+                  <div className="mt-5 grid grid-cols-3 gap-2 md:hidden">
+                    <Button
+                      type="button"
+                      className="px-2"
+                      icon={<Plus className="h-4 w-4" />}
+                      onClick={() => {
+                        setPaymentForm((current) => ({ ...current, creditCardId: selectedCard.id }));
+                        setShowMobilePaymentForm(true);
+                      }}
+                    >
+                      Pagar
+                    </Button>
+                    <Button type="button" className="px-2" variant="secondary" icon={<Edit3 className="h-4 w-4" />} onClick={() => editCard(selectedCard)}>
+                      Editar
+                    </Button>
+                    <Button type="button" className="px-2" variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => deleteCreditCard(selectedCard.id)}>
+                      Borrar
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-            <div className="grid gap-6 border-t border-zinc-200/80 p-5 dark:border-white/10 lg:grid-cols-[0.8fr_1.2fr]">
-              <form className="rounded-lg border border-zinc-200/80 p-4 dark:border-white/10" onSubmit={submitPayment}>
+            <div className="grid gap-6 border-t border-zinc-200/80 p-4 dark:border-white/10 sm:p-5 lg:grid-cols-[0.8fr_1.2fr]">
+              <form className="hidden rounded-lg border border-zinc-200/80 p-4 dark:border-white/10 md:block" onSubmit={submitPayment}>
                 <h3 className="text-base font-bold text-zinc-950 dark:text-white">
                   {editingPaymentId ? 'Editar pago' : `Registrar pago de ${selectedCard.name}`}
                 </h3>
@@ -387,7 +522,52 @@ export function CreditCards() {
                 </div>
               </form>
 
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="md:hidden">
+                <div className="mb-4 grid grid-cols-2 rounded-lg bg-zinc-100 p-1 dark:bg-white/10">
+                  <button
+                    type="button"
+                    className={`h-10 rounded-md text-sm font-bold transition ${
+                      mobileActivityTab === 'charges'
+                        ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-950 dark:text-white'
+                        : 'text-zinc-500 dark:text-zinc-300'
+                    }`}
+                    onClick={() => setMobileActivityTab('charges')}
+                  >
+                    Consumos
+                  </button>
+                  <button
+                    type="button"
+                    className={`h-10 rounded-md text-sm font-bold transition ${
+                      mobileActivityTab === 'payments'
+                        ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-950 dark:text-white'
+                        : 'text-zinc-500 dark:text-zinc-300'
+                    }`}
+                    onClick={() => setMobileActivityTab('payments')}
+                  >
+                    Pagos
+                  </button>
+                </div>
+                {mobileActivityTab === 'charges' ? (
+                  <ActivityList title="Consumos" count={selectedCharges.length}>
+                    {selectedCharges.map((charge) => (
+                      <ChargeRow key={charge.id} charge={charge} />
+                    ))}
+                  </ActivityList>
+                ) : (
+                  <ActivityList title="Pagos" count={selectedPayments.length}>
+                    {selectedPayments.map((payment) => (
+                      <PaymentRow
+                        key={payment.id}
+                        payment={payment}
+                        onEdit={() => editPayment(payment)}
+                        onDelete={() => deleteCreditCardPayment(payment.id)}
+                      />
+                    ))}
+                  </ActivityList>
+                )}
+              </div>
+
+              <div className="hidden gap-6 md:grid md:grid-cols-2">
                 <ActivityList title="Consumos" count={selectedCharges.length}>
                   {selectedCharges.map((charge) => (
                     <ChargeRow key={charge.id} charge={charge} />
@@ -415,7 +595,10 @@ export function CreditCards() {
             <button
               type="button"
               className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
-              onClick={() => cardFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onClick={() => {
+                setShowMobileCardForm(true);
+                cardFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             >
               Crear tarjeta
             </button>
@@ -432,6 +615,35 @@ function getCardColor(color: string): string {
 
 function getCardTextColor(color: string): string {
   return cardColors.find((item) => item.value === color)?.textClassName ?? cardColors[0].textClassName;
+}
+
+function CardColorPicker({ value, onChange, compact = false }: { value: string; onChange: (value: string) => void; compact?: boolean }) {
+  return (
+    <div className={`mt-2 grid grid-cols-2 gap-2 ${compact ? '' : 'sm:grid-cols-5'}`}>
+      {cardColors.map((color) => {
+        const selected = value === color.value;
+
+        return (
+          <button
+            key={color.value}
+            type="button"
+            className={`group relative flex ${compact ? 'h-12' : 'h-14'} items-end overflow-hidden rounded-lg bg-gradient-to-br p-2 text-left shadow-sm ring-1 transition ${color.className} ${color.textClassName} ${
+              selected ? 'ring-2 ring-zinc-950 dark:ring-white' : 'ring-black/10 hover:scale-[1.02]'
+            }`}
+            onClick={() => onChange(color.value)}
+            aria-label={`Elegir color ${color.label}`}
+          >
+            <span className="truncate text-[11px] font-bold leading-none drop-shadow-sm">{color.label}</span>
+            {selected ? (
+              <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow-sm">
+                <Check className="h-3.5 w-3.5" />
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function CardStat({ label, value }: { label: string; value: string }) {

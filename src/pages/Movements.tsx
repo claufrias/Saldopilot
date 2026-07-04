@@ -453,6 +453,7 @@ function MovementRow({
   const amountClassName = isIncome ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
   const cardName = creditCards.find((card) => card.id === movement.creditCardId)?.name ?? 'Tarjeta';
   const canSwipe = movement.movementKind !== 'opening_balance';
+  const actionHintOpacity = committedAction ? 1 : Math.min(1, Math.max(0, (Math.abs(dragOffset) - 16) / 48));
 
   function isDesktopGesture() {
     return typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
@@ -505,7 +506,11 @@ function MovementRow({
   return (
     <div className="relative overflow-hidden rounded-lg md:rounded-none">
       {canSwipe ? (
-        <div className="absolute inset-0 flex items-center justify-between px-5 md:hidden">
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-between bg-zinc-950/0 px-5 md:hidden"
+          style={{ opacity: actionHintOpacity }}
+          aria-hidden="true"
+        >
           <span className={`rounded-md px-2 py-1 text-xs font-bold transition ${dragOffset > 48 || committedAction === 'edit' ? 'bg-sky-600 text-white' : 'text-sky-600 dark:text-sky-300'}`}>Editar</span>
           <span className={`rounded-md px-2 py-1 text-xs font-bold transition ${dragOffset < -48 || committedAction === 'delete' ? 'bg-rose-600 text-white' : 'text-rose-600 dark:text-rose-300'}`}>Borrar</span>
         </div>
