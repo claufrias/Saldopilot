@@ -11,6 +11,8 @@
 
   html {
     @apply bg-stone-50 dark:bg-zinc-950;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -23,6 +25,14 @@
   button,
   textarea {
     font: inherit;
+  }
+
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
   button,

@@ -1,5 +1,5 @@
 import { Edit3, MapPin, Navigation, Plus, Search, Settings2, SlidersHorizontal, Trash2, X } from 'lucide-react';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { CategoryManager } from '../components/category/CategoryManager';
 import { CategoryPicker } from '../components/category/CategoryPicker';
@@ -442,9 +442,12 @@ function MovementRow({
   onEdit: (movement: Movement) => void;
   onDelete: (id: string) => void;
 }) {
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const dragOffsetRef = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const [committedAction, setCommittedAction] = useState<'edit' | 'delete' | null>(null);
   const categoryTone = getCategoryColorFor(categories, movement.category);
   const isIncome = movement.type === 'income';
   const amountClassName = isIncome ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300';
@@ -456,70 +459,102 @@ function MovementRow({
   }
 
   function finishSwipe() {
+    const finalOffset = dragOffsetRef.current;
+
     if (!canSwipe || isDesktopGesture()) {
       setDragOffset(0);
-      setDragStart(null);
+      dragStart.current = null;
+      dragOffsetRef.current = 0;
       setIsSwiping(false);
+      setIsSettling(false);
       return;
     }
 
-    if (dragOffset > 88) {
-      onEdit(movement);
+    const action = finalOffset > 96 ? 'edit' : finalOffset < -96 ? 'delete' : null;
+
+    if (action) {
+      setCommittedAction(action);
+      setIsSettling(true);
+      setDragOffset(action === 'edit' ? 118 : -118);
+
+      window.setTimeout(() => {
+        if (action === 'edit') {
+          onEdit(movement);
+        } else {
+          onDelete(movement.id);
+        }
+
+        dragStart.current = null;
+        dragOffsetRef.current = 0;
+        setDragOffset(0);
+        setIsSwiping(false);
+        setIsSettling(false);
+        setCommittedAction(null);
+      }, 140);
+      return;
     }
 
-    if (dragOffset < -88) {
-      onDelete(movement.id);
-    }
-
+    setIsSettling(true);
     setDragOffset(0);
-    setDragStart(null);
+    dragOffsetRef.current = 0;
+    dragStart.current = null;
     setIsSwiping(false);
+    window.setTimeout(() => setIsSettling(false), 180);
   }
 
   return (
     <div className="relative overflow-hidden rounded-lg md:rounded-none">
       {canSwipe ? (
         <div className="absolute inset-0 flex items-center justify-between px-5 md:hidden">
-          <span className="text-xs font-bold text-sky-600 dark:text-sky-300">Editar</span>
-          <span className="text-xs font-bold text-rose-600 dark:text-rose-300">Borrar</span>
+          <span className={`rounded-md px-2 py-1 text-xs font-bold transition ${dragOffset > 48 || committedAction === 'edit' ? 'bg-sky-600 text-white' : 'text-sky-600 dark:text-sky-300'}`}>Editar</span>
+          <span className={`rounded-md px-2 py-1 text-xs font-bold transition ${dragOffset < -48 || committedAction === 'delete' ? 'bg-rose-600 text-white' : 'text-rose-600 dark:text-rose-300'}`}>Borrar</span>
         </div>
       ) : null}
       <article
-        className={`panel relative border-l-4 p-3.5 transition-transform md:grid md:gap-4 md:border-x-0 md:border-b-0 md:border-r-0 md:p-4 md:grid-cols-[1fr_auto_auto] md:items-center md:rounded-none md:shadow-none ${
+        className={`panel relative border-l-4 p-3.5 md:grid md:gap-4 md:border-x-0 md:border-b-0 md:border-r-0 md:p-4 md:grid-cols-[1fr_auto_auto] md:items-center md:rounded-none md:shadow-none ${
           movement.type === 'expense' ? `${categoryTone.border} ${categoryTone.soft}` : 'border-emerald-200 dark:border-emerald-500/30'
         }`}
-        style={{ transform: `translateX(${dragOffset}px)`, touchAction: 'pan-y' }}
+        style={{
+          transform: `translate3d(${dragOffset}px, 0, 0)`,
+          transition: isSwiping ? 'none' : isSettling ? 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)' : undefined,
+          touchAction: 'pan-y',
+          willChange: dragOffset !== 0 ? 'transform' : undefined,
+        }}
         onTouchStart={(event) => {
           if (!canSwipe || isDesktopGesture()) {
             return;
           }
 
           const touch = event.touches[0];
-          setDragStart({ x: touch.clientX, y: touch.clientY });
+          dragStart.current = { x: touch.clientX, y: touch.clientY };
+          dragOffsetRef.current = 0;
+          setIsSettling(false);
           setIsSwiping(false);
         }}
         onTouchMove={(event) => {
-          if (!dragStart || !canSwipe || isDesktopGesture()) {
+          if (!dragStart.current || !canSwipe || isDesktopGesture()) {
             return;
           }
 
           const touch = event.touches[0];
-          const deltaX = touch.clientX - dragStart.x;
-          const deltaY = touch.clientY - dragStart.y;
+          const deltaX = touch.clientX - dragStart.current.x;
+          const deltaY = touch.clientY - dragStart.current.y;
 
           if (!isSwiping && Math.abs(deltaX) < 10) {
             return;
           }
 
           if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
-            setDragStart(null);
+            dragStart.current = null;
             return;
           }
 
           event.preventDefault();
           setIsSwiping(true);
 
-          const nextOffset = Math.max(-112, Math.min(112, deltaX));
+          const dampedOffset = Math.sign(deltaX) * Math.min(128, Math.pow(Math.abs(deltaX), 0.94));
+          const nextOffset = Math.round(dampedOffset);
+          dragOffsetRef.current = nextOffset;
           setDragOffset(nextOffset);
         }}
         onTouchEnd={finishSwipe}
