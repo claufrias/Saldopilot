@@ -8,6 +8,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useApp } from '../context/AppContext';
 import type { CreditCard, CreditCardPayment, Movement } from '../types';
+import { confirmDelete } from '../utils/confirm';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/format';
 import { getCreditCardCharges, getCreditCardSummary, getInstallmentAmount, getInstallmentCount, getOperationalMovements } from '../utils/finance';
 
@@ -160,6 +161,18 @@ export function CreditCards() {
       amount: String(payment.amount),
     });
     setShowMobilePaymentForm(true);
+  }
+
+  function removeCreditCard(card: CreditCard) {
+    if (confirmDelete(`la tarjeta "${card.name}"`)) {
+      deleteCreditCard(card.id);
+    }
+  }
+
+  function removeCreditCardPayment(payment: CreditCardPayment) {
+    if (confirmDelete(`el pago "${payment.description}"`)) {
+      deleteCreditCardPayment(payment.id);
+    }
   }
 
   const selectedSummary = selectedCard ? getCreditCardSummary(selectedCard, operationalMovements, operationalPayments) : null;
@@ -457,7 +470,7 @@ export function CreditCards() {
                       <button className="icon-button" onClick={() => editCard(selectedCard)} aria-label="Editar tarjeta">
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      <button className="icon-button" onClick={() => deleteCreditCard(selectedCard.id)} aria-label="Eliminar tarjeta">
+                      <button className="icon-button" onClick={() => removeCreditCard(selectedCard)} aria-label="Eliminar tarjeta">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -493,7 +506,7 @@ export function CreditCards() {
                     <Button type="button" className="px-2" variant="secondary" icon={<Edit3 className="h-4 w-4" />} onClick={() => editCard(selectedCard)}>
                       Editar
                     </Button>
-                    <Button type="button" className="px-2" variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => deleteCreditCard(selectedCard.id)}>
+                    <Button type="button" className="px-2" variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => removeCreditCard(selectedCard)}>
                       Borrar
                     </Button>
                   </div>
@@ -570,7 +583,7 @@ export function CreditCards() {
                         key={payment.id}
                         payment={payment}
                         onEdit={() => editPayment(payment)}
-                        onDelete={() => deleteCreditCardPayment(payment.id)}
+                        onDelete={() => removeCreditCardPayment(payment)}
                       />
                     ))}
                   </ActivityList>
@@ -589,7 +602,7 @@ export function CreditCards() {
                       key={payment.id}
                       payment={payment}
                       onEdit={() => editPayment(payment)}
-                      onDelete={() => deleteCreditCardPayment(payment.id)}
+                      onDelete={() => removeCreditCardPayment(payment)}
                     />
                   ))}
                 </ActivityList>

@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useApp } from '../context/AppContext';
 import type { Category, RecurringExpense } from '../types';
+import { confirmDelete } from '../utils/confirm';
 import { formatCurrency, formatDate } from '../utils/format';
 
 const emptyRecurring = {
@@ -135,7 +136,7 @@ export function RecurringExpenses() {
               <button className="icon-button" onClick={() => edit(expense)} aria-label="Editar gasto fijo">
                 <Edit3 className="h-4 w-4" />
               </button>
-              <button className="icon-button" onClick={() => deleteRecurringExpense(expense.id)} aria-label="Eliminar gasto fijo">
+              <button className="icon-button" onClick={() => confirmDelete(`el gasto fijo "${expense.description}"`) && deleteRecurringExpense(expense.id)} aria-label="Eliminar gasto fijo">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

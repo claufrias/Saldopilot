@@ -8,6 +8,7 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { MONTHS } from '../data/constants';
 import { useApp } from '../context/AppContext';
 import type { Budget, Category } from '../types';
+import { confirmDelete } from '../utils/confirm';
 import { getCurrentMonth, getCurrentYear } from '../utils/date';
 import { formatCurrency } from '../utils/format';
 import { budgetUsage, getOperationalMovements } from '../utils/finance';
@@ -118,7 +119,7 @@ export function Budgets() {
                   <button className="icon-button" onClick={() => editBudget(budget)} aria-label="Editar presupuesto">
                     <Edit3 className="h-4 w-4" />
                   </button>
-                  <button className="icon-button" onClick={() => deleteBudget(budget.id)} aria-label="Eliminar presupuesto">
+                  <button className="icon-button" onClick={() => confirmDelete(`el presupuesto de ${budget.category}`) && deleteBudget(budget.id)} aria-label="Eliminar presupuesto">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

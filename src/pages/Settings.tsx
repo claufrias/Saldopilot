@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useApp } from '../context/AppContext';
 import type { AppState } from '../types';
+import { confirmResetAll } from '../utils/confirm';
 import { formatCurrency } from '../utils/format';
 import { getOperationalBalance } from '../utils/finance';
 
@@ -73,7 +74,7 @@ export function Settings() {
   }
 
   function resetAll() {
-    const confirmed = window.confirm('¿Restablecer todos los datos de Saldopilot?');
+    const confirmed = confirmResetAll();
 
     if (confirmed) {
       app.resetState();

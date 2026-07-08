@@ -10,6 +10,7 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { MONTHS } from '../data/constants';
 import { useApp } from '../context/AppContext';
 import type { Category, Filters, Movement, MovementLocation, MovementType, PaymentMethod } from '../types';
+import { confirmDelete } from '../utils/confirm';
 import { getCurrentMonth, getCurrentYear } from '../utils/date';
 import { formatCoordinates, formatCurrency, formatDateTime } from '../utils/format';
 import { applyFilters, getMovementsWithFinancialStart, yearsFromMovements } from '../utils/finance';
@@ -71,6 +72,12 @@ export function Movements() {
 
   function openCreateMovement() {
     navigate('/movimientos/nuevo');
+  }
+
+  function removeMovement(movement: Movement) {
+    if (confirmDelete(`el movimiento "${movement.description}"`)) {
+      deleteMovement(movement.id);
+    }
   }
 
   function resetForm() {
@@ -406,7 +413,7 @@ export function Movements() {
                 categories={categories}
                 creditCards={creditCards}
                 onEdit={startEdit}
-                onDelete={deleteMovement}
+                onDelete={removeMovement}
               />
             ))
           ) : (
@@ -450,7 +457,7 @@ function MovementRow({
   categories: ReturnType<typeof useApp>['categories'];
   creditCards: ReturnType<typeof useApp>['creditCards'];
   onEdit: (movement: Movement) => void;
-  onDelete: (id: string) => void;
+  onDelete: (movement: Movement) => void;
 }) {
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const dragOffsetRef = useRef(0);
@@ -492,7 +499,7 @@ function MovementRow({
         if (action === 'edit') {
           onEdit(movement);
         } else {
-          onDelete(movement.id);
+          onDelete(movement);
         }
 
         dragStart.current = null;
@@ -630,7 +637,7 @@ function MovementRow({
           <button className="icon-button h-9 w-9" onClick={() => onEdit(movement)} aria-label="Editar movimiento">
             <Edit3 className="h-4 w-4" />
           </button>
-          <button className="icon-button h-9 w-9" onClick={() => onDelete(movement.id)} aria-label="Eliminar movimiento">
+          <button className="icon-button h-9 w-9" onClick={() => onDelete(movement)} aria-label="Eliminar movimiento">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>

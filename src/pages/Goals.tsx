@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useApp } from '../context/AppContext';
 import type { SavingsGoal } from '../types';
+import { confirmDelete } from '../utils/confirm';
 import { formatCurrency, formatDate, percentage } from '../utils/format';
 
 const emptyGoal = {
@@ -172,7 +173,7 @@ export function Goals() {
                 <button className="icon-button" onClick={() => edit(goal)} aria-label="Editar objetivo">
                   <Edit3 className="h-4 w-4" />
                 </button>
-                <button className="icon-button" onClick={() => deleteSavingsGoal(goal.id)} aria-label="Eliminar objetivo">
+                <button className="icon-button" onClick={() => confirmDelete(`el objetivo "${goal.name}"`) && deleteSavingsGoal(goal.id)} aria-label="Eliminar objetivo">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>

@@ -1,6 +1,7 @@
 import { Plus, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { confirmDelete } from '../../utils/confirm';
 import { Button } from '../ui/Button';
 import { CategoryIcon } from './CategoryBadge';
 
@@ -60,7 +61,7 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
               <button
                 className="icon-button h-9 w-9"
                 disabled={!deletable}
-                onClick={() => deleteCategory(category.id)}
+                onClick={() => confirmDelete(`la categoria "${category.name}"`) && deleteCategory(category.id)}
                 aria-label={`Eliminar categoria ${category.name}`}
                 title={deletable ? 'Eliminar categoria' : 'No se puede eliminar una categoria predeterminada o en uso'}
               >
