@@ -4,6 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { useAuth } from './context/AuthContext';
 import { Auth } from './pages/Auth';
 import { Budgets } from './pages/Budgets';
+import { CreateCategory } from './pages/CreateCategory';
 import { CreditCards } from './pages/CreditCards';
 import { CreateMovement } from './pages/CreateMovement';
 import { Dashboard } from './pages/Dashboard';
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="movimientos" element={<Movements />} />
         <Route path="movimientos/nuevo" element={<CreateMovement />} />
+        <Route path="categorias/nueva" element={<CreateCategory />} />
         <Route path="estadisticas" element={<Stats />} />
         <Route path="calendario" element={<FinancialCalendar />} />
         <Route path="presupuestos" element={<Budgets />} />

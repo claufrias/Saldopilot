@@ -1,6 +1,6 @@
 import { Edit3, MapPin, Navigation, Plus, Search, Settings2, SlidersHorizontal, Trash2, X } from 'lucide-react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { CategoryManager } from '../components/category/CategoryManager';
 import { CategoryPicker } from '../components/category/CategoryPicker';
@@ -34,6 +34,7 @@ function createEmptyForm() {
 export function Movements() {
   const { movements, creditCards, categories, financialStart, addMovement, updateMovement, deleteMovement } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState(createEmptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<string>('');
@@ -60,6 +61,13 @@ export function Movements() {
     .filter((movement) => movement.type === 'expense' && movement.movementKind !== 'credit_card_payment')
     .reduce((total, movement) => total + movement.amount, 0);
   const activeFilters = [filters.month, filters.year, filters.category, filters.type].filter((value) => value !== 'all').length + (filters.query ? 1 : 0);
+
+  useEffect(() => {
+    if ((location.state as { showCategoryManager?: boolean } | null)?.showCategoryManager) {
+      setShowCategoryManager(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   function openCreateMovement() {
     navigate('/movimientos/nuevo');

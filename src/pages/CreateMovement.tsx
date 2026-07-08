@@ -177,9 +177,6 @@ export function CreateMovement() {
                   </p>
                 </div>
               </div>
-              <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
-                {Math.round(progress)}%
-              </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10">
               <div className="h-full rounded-full bg-zinc-950 transition-all duration-200 ease-out dark:bg-white" style={{ width: `${progress}%` }} />
@@ -187,7 +184,7 @@ export function CreateMovement() {
           </div>
 
           <div className="min-h-[25rem] p-4 sm:p-5">
-            <div key={currentStep} className={`movement-step movement-step-${direction}`}>
+            <div key={currentStep} className={`guided-step guided-step-${direction}`}>
               {currentStep === 'type' ? (
                 <StepBlock title="Tipo de movimiento">
                   <MovementTypePicker
