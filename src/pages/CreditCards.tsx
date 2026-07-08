@@ -1,6 +1,8 @@
 import { Check, CreditCardIcon, Edit3, Plus, Trash2, X } from 'lucide-react';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
+import { getCardColor, getCardTextColor } from '../components/credit-cards/cardVisuals';
 import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -53,7 +55,7 @@ export function CreditCards() {
     updateCreditCardPayment,
     deleteCreditCardPayment,
   } = useApp();
-  const cardFormRef = useRef<HTMLFormElement | null>(null);
+  const navigate = useNavigate();
   const [cardForm, setCardForm] = useState(emptyCard);
   const operationalMovements = getOperationalMovements(movements, financialStart.date);
   const operationalPayments = creditCardPayments.filter((payment) => payment.date >= financialStart.date);
@@ -180,7 +182,7 @@ export function CreditCards() {
         description="Anota consumos con tarjeta, pagos realizados y el dinero comprometido para próximos vencimientos."
         action={
           <div className="grid grid-cols-2 gap-2 md:hidden">
-            <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={() => setShowMobileCardForm(true)}>
+            <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={() => navigate('/tarjetas/nueva')}>
               Tarjeta
             </Button>
             <Button
@@ -201,8 +203,15 @@ export function CreditCards() {
         }
       />
 
+      <div className="hidden justify-end md:flex">
+        <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={() => navigate('/tarjetas/nueva')}>
+          Crear tarjeta
+        </Button>
+      </div>
+
+      {editingCardId ? (
       <section>
-        <form ref={cardFormRef} className="panel hidden gap-4 p-5 md:grid md:grid-cols-4" onSubmit={submitCard}>
+        <form className="panel hidden gap-4 p-5 md:grid md:grid-cols-4" onSubmit={submitCard}>
           <div className="md:col-span-4">
             <p className="label">{editingCardId ? 'Editar tarjeta' : 'Crear nueva tarjeta'}</p>
           </div>
@@ -248,6 +257,7 @@ export function CreditCards() {
           </div>
         </form>
       </section>
+      ) : null}
 
       {showMobileCardForm ? (
         <div className="fixed inset-0 z-40 flex items-end bg-zinc-950/45 px-3 pb-3 backdrop-blur-sm md:hidden" role="dialog" aria-modal="true">
@@ -595,10 +605,7 @@ export function CreditCards() {
             <button
               type="button"
               className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950"
-              onClick={() => {
-                setShowMobileCardForm(true);
-                cardFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              onClick={() => navigate('/tarjetas/nueva')}
             >
               Crear tarjeta
             </button>
@@ -607,14 +614,6 @@ export function CreditCards() {
       </section>
     </div>
   );
-}
-
-function getCardColor(color: string): string {
-  return cardColors.find((item) => item.value === color)?.className ?? cardColors[0].className;
-}
-
-function getCardTextColor(color: string): string {
-  return cardColors.find((item) => item.value === color)?.textClassName ?? cardColors[0].textClassName;
 }
 
 function CardColorPicker({ value, onChange, compact = false }: { value: string; onChange: (value: string) => void; compact?: boolean }) {

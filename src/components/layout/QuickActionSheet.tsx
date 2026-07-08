@@ -24,17 +24,6 @@ function createRecurringForm() {
   };
 }
 
-function createCardForm() {
-  return {
-    name: '',
-    issuer: '',
-    lastFour: '',
-    limit: '',
-    closingDay: 25,
-    dueDay: 10,
-  };
-}
-
 function createPaymentForm() {
   return {
     creditCardId: '',
@@ -49,7 +38,6 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
   const navigate = useNavigate();
   const [kind, setKind] = useState<QuickActionKind>('movement');
   const [recurringForm, setRecurringForm] = useState(createRecurringForm);
-  const [cardForm, setCardForm] = useState(createCardForm);
   const [paymentForm, setPaymentForm] = useState(createPaymentForm);
 
   useEffect(() => {
@@ -64,7 +52,6 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
 
   function finish() {
     setRecurringForm(createRecurringForm());
-    setCardForm(createCardForm());
     setPaymentForm(createPaymentForm());
     onClose();
   }
@@ -82,27 +69,6 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
       description: recurringForm.description.trim(),
       amount,
       startDate: recurringForm.startDate,
-      active: true,
-    });
-    finish();
-  }
-
-  function submitCard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const limit = Number(cardForm.limit);
-
-    if (!cardForm.name.trim() || limit < 0 || cardForm.closingDay < 1 || cardForm.closingDay > 31 || cardForm.dueDay < 1 || cardForm.dueDay > 31) {
-      return;
-    }
-
-    app.addCreditCard({
-      name: cardForm.name.trim(),
-      issuer: cardForm.issuer.trim(),
-      lastFour: cardForm.lastFour.trim().slice(-4),
-      limit,
-      closingDay: Number(cardForm.closingDay),
-      dueDay: Number(cardForm.dueDay),
-      color: 'slate',
       active: true,
     });
     finish();
@@ -187,31 +153,18 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
         ) : null}
 
         {kind === 'card' ? (
-          <form className="mt-4 grid gap-4" onSubmit={submitCard}>
-            <Field label="Nombre">
-              <input className="field mt-2" value={cardForm.name} onChange={(event) => setCardForm({ ...cardForm, name: event.target.value })} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Banco">
-                <input className="field mt-2" value={cardForm.issuer} onChange={(event) => setCardForm({ ...cardForm, issuer: event.target.value })} />
-              </Field>
-              <Field label="Ultimos 4">
-                <input className="field mt-2" maxLength={4} value={cardForm.lastFour} onChange={(event) => setCardForm({ ...cardForm, lastFour: event.target.value.replace(/\D/g, '') })} />
-              </Field>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Limite">
-                <input className="field mt-2" type="number" min="0" value={cardForm.limit} onChange={(event) => setCardForm({ ...cardForm, limit: event.target.value })} />
-              </Field>
-              <Field label="Cierre">
-                <input className="field mt-2" type="number" min="1" max="31" value={cardForm.closingDay} onChange={(event) => setCardForm({ ...cardForm, closingDay: Number(event.target.value) })} />
-              </Field>
-              <Field label="Vence">
-                <input className="field mt-2" type="number" min="1" max="31" value={cardForm.dueDay} onChange={(event) => setCardForm({ ...cardForm, dueDay: Number(event.target.value) })} />
-              </Field>
-            </div>
-            <Button icon={<Plus className="h-4 w-4" />}>Crear tarjeta</Button>
-          </form>
+          <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-white/5">
+            <Button
+              className="w-full"
+              icon={<CreditCard className="h-4 w-4" />}
+              onClick={() => {
+                onClose();
+                navigate('/tarjetas/nueva');
+              }}
+            >
+              Crear tarjeta
+            </Button>
+          </div>
         ) : null}
 
         {kind === 'payment' ? (
