@@ -57,4 +57,48 @@
   .icon-button {
     @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white;
   }
+
+  .movement-step {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: both;
+  }
+
+  .movement-step-forward {
+    animation-name: movement-step-forward;
+  }
+
+  .movement-step-back {
+    animation-name: movement-step-back;
+  }
+}
+
+@keyframes movement-step-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes movement-step-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movement-step {
+    animation: none;
+  }
 }

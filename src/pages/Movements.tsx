@@ -1,5 +1,6 @@
 import { Edit3, MapPin, Navigation, Plus, Search, Settings2, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CategoryBadge, getCategoryColorFor } from '../components/category/CategoryBadge';
 import { CategoryManager } from '../components/category/CategoryManager';
 import { CategoryPicker } from '../components/category/CategoryPicker';
@@ -32,6 +33,7 @@ function createEmptyForm() {
 
 export function Movements() {
   const { movements, creditCards, categories, financialStart, addMovement, updateMovement, deleteMovement } = useApp();
+  const navigate = useNavigate();
   const [form, setForm] = useState(createEmptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<string>('');
@@ -60,10 +62,7 @@ export function Movements() {
   const activeFilters = [filters.month, filters.year, filters.category, filters.type].filter((value) => value !== 'all').length + (filters.query ? 1 : 0);
 
   function openCreateMovement() {
-    setEditingId(null);
-    setLocationStatus('');
-    setForm(createEmptyForm());
-    setShowMobileForm(true);
+    navigate('/movimientos/nuevo');
   }
 
   function resetForm() {
@@ -289,7 +288,10 @@ export function Movements() {
         action={
           <div className="flex gap-2">
             <Button type="button" className="md:hidden" icon={<Plus className="h-4 w-4" />} onClick={openCreateMovement}>
-              Agregar
+              Crear
+            </Button>
+            <Button type="button" className="hidden md:inline-flex" icon={<Plus className="h-4 w-4" />} onClick={openCreateMovement}>
+              Crear movimiento
             </Button>
             <Button
               type="button"
@@ -310,7 +312,7 @@ export function Movements() {
 
       {showCategoryManager ? <CategoryManager onClose={() => setShowCategoryManager(false)} /> : null}
 
-      {renderMovementForm('panel hidden gap-4 p-5 md:grid lg:grid-cols-8')}
+      {editingId ? renderMovementForm('panel hidden gap-4 p-5 md:grid lg:grid-cols-8') : null}
 
       {showMobileForm ? (
         <div className="fixed inset-0 z-40 flex items-end bg-zinc-950/45 px-3 pb-3 backdrop-blur-sm md:hidden">

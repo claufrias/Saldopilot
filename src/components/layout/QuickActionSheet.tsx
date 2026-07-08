@@ -1,10 +1,11 @@
 import { CalendarClock, CreditCard, Plus, ReceiptText, WalletCards, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CategoryPicker } from '../category/CategoryPicker';
 import { Button } from '../ui/Button';
 import { useApp } from '../../context/AppContext';
-import type { Category, MovementType, PaymentMethod } from '../../types';
+import type { Category } from '../../types';
 
 type QuickActionKind = 'movement' | 'recurring' | 'card' | 'payment';
 
@@ -12,24 +13,6 @@ const now = () => new Date();
 
 function dateToday() {
   return now().toISOString().slice(0, 10);
-}
-
-function timeNow() {
-  return now().toTimeString().slice(0, 5);
-}
-
-function createMovementForm() {
-  return {
-    type: 'expense' as MovementType,
-    category: 'Comida' as Category,
-    description: '',
-    amount: '',
-    date: dateToday(),
-    time: timeNow(),
-    paymentMethod: 'cash' as PaymentMethod,
-    creditCardId: '',
-    installments: 1,
-  };
 }
 
 function createRecurringForm() {
@@ -63,8 +46,8 @@ function createPaymentForm() {
 
 export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const app = useApp();
+  const navigate = useNavigate();
   const [kind, setKind] = useState<QuickActionKind>('movement');
-  const [movementForm, setMovementForm] = useState(createMovementForm);
   const [recurringForm, setRecurringForm] = useState(createRecurringForm);
   const [cardForm, setCardForm] = useState(createCardForm);
   const [paymentForm, setPaymentForm] = useState(createPaymentForm);
@@ -73,12 +56,6 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
     if (!app.usesCreditCards && (kind === 'card' || kind === 'payment')) {
       setKind('movement');
     }
-
-    if (!app.usesCreditCards) {
-      setMovementForm((current) =>
-        current.paymentMethod === 'credit' ? { ...current, paymentMethod: 'cash', creditCardId: '' } : current,
-      );
-    }
   }, [app.usesCreditCards, kind]);
 
   if (!open) {
@@ -86,33 +63,10 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
   }
 
   function finish() {
-    setMovementForm(createMovementForm());
     setRecurringForm(createRecurringForm());
     setCardForm(createCardForm());
     setPaymentForm(createPaymentForm());
     onClose();
-  }
-
-  function submitMovement(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const amount = Number(movementForm.amount);
-
-    if (!movementForm.description.trim() || amount <= 0) {
-      return;
-    }
-
-    app.addMovement({
-      type: movementForm.type,
-      category: movementForm.category,
-      description: movementForm.description.trim(),
-      date: movementForm.date,
-      time: movementForm.time,
-      amount,
-      paymentMethod: movementForm.type === 'expense' ? movementForm.paymentMethod : 'cash',
-      creditCardId: movementForm.type === 'expense' && movementForm.paymentMethod === 'credit' ? movementForm.creditCardId : undefined,
-      installments: movementForm.type === 'expense' && movementForm.paymentMethod === 'credit' ? Number(movementForm.installments) : undefined,
-    });
-    finish();
   }
 
   function submitRecurring(event: FormEvent<HTMLFormElement>) {
@@ -178,10 +132,10 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-white/20" />
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <p className="label">Acción rápida</p>
+            <p className="label">Accion rapida</p>
             <h2 className="text-lg font-bold text-zinc-950 dark:text-white">Agregar</h2>
           </div>
-          <button className="icon-button h-9 w-9" onClick={onClose} type="button" aria-label="Cerrar acción rápida">
+          <button className="icon-button h-9 w-9" onClick={onClose} type="button" aria-label="Cerrar accion rapida">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -198,44 +152,18 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
         </div>
 
         {kind === 'movement' ? (
-          <form className="mt-4 grid gap-4" onSubmit={submitMovement}>
-            <SegmentedType value={movementForm.type} onChange={(type) => setMovementForm({ ...movementForm, type, paymentMethod: type === 'income' ? 'cash' : movementForm.paymentMethod })} />
-            <Field label="Categoria">
-              <CategoryPicker value={movementForm.category} onChange={(category) => setMovementForm({ ...movementForm, category })} />
-            </Field>
-            <Field label="Descripcion">
-              <input className="field mt-2" value={movementForm.description} onChange={(event) => setMovementForm({ ...movementForm, description: event.target.value })} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Monto">
-                <input className="field mt-2" type="number" min="1" value={movementForm.amount} onChange={(event) => setMovementForm({ ...movementForm, amount: event.target.value })} />
-              </Field>
-              <Field label="Fecha">
-                <input className="field mt-2" type="date" value={movementForm.date} onChange={(event) => setMovementForm({ ...movementForm, date: event.target.value })} />
-              </Field>
-            </div>
-            {movementForm.type === 'expense' ? (
-              <div className={`grid gap-3 ${app.usesCreditCards ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                <Field label="Pago">
-                  <select className="field mt-2" value={movementForm.paymentMethod} onChange={(event) => setMovementForm({ ...movementForm, paymentMethod: event.target.value as PaymentMethod, creditCardId: '' })}>
-                    <option value="cash">Efectivo / Débito</option>
-                    {app.usesCreditCards ? <option value="credit">Tarjeta</option> : null}
-                  </select>
-                </Field>
-                {app.usesCreditCards ? (
-                  <Field label="Tarjeta">
-                    <select className="field mt-2" value={movementForm.creditCardId} disabled={movementForm.paymentMethod !== 'credit'} onChange={(event) => setMovementForm({ ...movementForm, creditCardId: event.target.value })}>
-                      <option value="">Sin tarjeta</option>
-                      {app.creditCards.map((card) => (
-                        <option key={card.id} value={card.id}>{card.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ) : null}
-              </div>
-            ) : null}
-            <Button icon={<Plus className="h-4 w-4" />}>Crear movimiento</Button>
-          </form>
+          <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-white/5">
+            <Button
+              className="w-full"
+              icon={<ReceiptText className="h-4 w-4" />}
+              onClick={() => {
+                onClose();
+                navigate('/movimientos/nuevo');
+              }}
+            >
+              Crear movimiento
+            </Button>
+          </div>
         ) : null}
 
         {kind === 'recurring' ? (
@@ -267,12 +195,12 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
               <Field label="Banco">
                 <input className="field mt-2" value={cardForm.issuer} onChange={(event) => setCardForm({ ...cardForm, issuer: event.target.value })} />
               </Field>
-              <Field label="Últimos 4">
+              <Field label="Ultimos 4">
                 <input className="field mt-2" maxLength={4} value={cardForm.lastFour} onChange={(event) => setCardForm({ ...cardForm, lastFour: event.target.value.replace(/\D/g, '') })} />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Límite">
+              <Field label="Limite">
                 <input className="field mt-2" type="number" min="0" value={cardForm.limit} onChange={(event) => setCardForm({ ...cardForm, limit: event.target.value })} />
               </Field>
               <Field label="Cierre">
@@ -292,7 +220,9 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
               <select className="field mt-2" value={paymentForm.creditCardId} onChange={(event) => setPaymentForm({ ...paymentForm, creditCardId: event.target.value })}>
                 <option value="">Elegir tarjeta</option>
                 {app.creditCards.map((card) => (
-                  <option key={card.id} value={card.id}>{card.name}</option>
+                  <option key={card.id} value={card.id}>
+                    {card.name}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -312,7 +242,9 @@ export function QuickActionSheet({ open, onClose }: { open: boolean; onClose: ()
                 Primero crea una tarjeta.
               </p>
             ) : null}
-            <Button icon={<Plus className="h-4 w-4" />} disabled={app.creditCards.length === 0}>Registrar pago</Button>
+            <Button icon={<Plus className="h-4 w-4" />} disabled={app.creditCards.length === 0}>
+              Registrar pago
+            </Button>
           </form>
         ) : null}
       </div>
@@ -340,25 +272,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     <div>
       <label className="label">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function SegmentedType({ value, onChange }: { value: MovementType; onChange: (type: MovementType) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-1 dark:bg-white/10">
-      {(['expense', 'income'] as MovementType[]).map((type) => (
-        <button
-          key={type}
-          type="button"
-          className={`min-h-10 rounded-md text-sm font-bold transition ${
-            value === type ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-zinc-500 dark:text-zinc-300'
-          }`}
-          onClick={() => onChange(type)}
-        >
-          {type === 'expense' ? 'Gasto' : 'Ingreso'}
-        </button>
-      ))}
     </div>
   );
 }

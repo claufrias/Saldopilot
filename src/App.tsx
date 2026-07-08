@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext';
 import { Auth } from './pages/Auth';
 import { Budgets } from './pages/Budgets';
 import { CreditCards } from './pages/CreditCards';
+import { CreateMovement } from './pages/CreateMovement';
 import { Dashboard } from './pages/Dashboard';
 import { FinancialCalendar } from './pages/FinancialCalendar';
 import { Goals } from './pages/Goals';
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route element={<AppLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="movimientos" element={<Movements />} />
+        <Route path="movimientos/nuevo" element={<CreateMovement />} />
         <Route path="estadisticas" element={<Stats />} />
         <Route path="calendario" element={<FinancialCalendar />} />
         <Route path="presupuestos" element={<Budgets />} />
