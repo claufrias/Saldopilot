@@ -1,24 +1,71 @@
-import { Check, Edit3, Plus, Trash2, WalletCards } from 'lucide-react';
+import { Briefcase, Check, Edit3, Heart, Home, Laptop, Plus, Shapes, Tag, Trash2 } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
-import { CategoryIcon, getCategoryColorFor } from '../components/category/CategoryBadge';
-import { CategoryPicker } from '../components/category/CategoryPicker';
 import { Button } from '../components/ui/Button';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useApp } from '../context/AppContext';
-import type { Category, ExpectedIncome, ExpectedIncomeRecurrence, ExpectedIncomeSource, ExpectedIncomeStatus } from '../types';
+import type { ExpectedIncome, ExpectedIncomeRecurrence, ExpectedIncomeSource, ExpectedIncomeStatus } from '../types';
 import { confirmDelete } from '../utils/confirm';
 import { getCurrentMonth, getCurrentYear, monthKey } from '../utils/date';
 import { formatCurrency, formatDate } from '../utils/format';
 import { getExpectedIncomePendingAmount } from '../utils/finance';
 
-const sourceOptions: Array<{ value: ExpectedIncomeSource; label: string }> = [
-  { value: 'salary', label: 'Sueldo' },
-  { value: 'freelance', label: 'Freelance' },
-  { value: 'sale', label: 'Venta' },
-  { value: 'rent', label: 'Alquiler' },
-  { value: 'aid', label: 'Ayuda' },
-  { value: 'other', label: 'Otro' },
-];
+const sourceOptions = [
+  {
+    value: 'salary',
+    label: 'Sueldo',
+    category: 'Trabajo',
+    icon: Briefcase,
+    iconClassName: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300',
+    cardClassName: 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-500/30 dark:bg-emerald-500/10',
+  },
+  {
+    value: 'freelance',
+    label: 'Freelance',
+    category: 'Trabajo',
+    icon: Laptop,
+    iconClassName: 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300',
+    cardClassName: 'border-sky-200 bg-sky-50/50 dark:border-sky-500/30 dark:bg-sky-500/10',
+  },
+  {
+    value: 'sale',
+    label: 'Venta',
+    category: 'Otros',
+    icon: Tag,
+    iconClassName: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300',
+    cardClassName: 'border-violet-200 bg-violet-50/50 dark:border-violet-500/30 dark:bg-violet-500/10',
+  },
+  {
+    value: 'rent',
+    label: 'Alquiler',
+    category: 'Otros',
+    icon: Home,
+    iconClassName: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300',
+    cardClassName: 'border-amber-200 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10',
+  },
+  {
+    value: 'aid',
+    label: 'Ayuda',
+    category: 'Otros',
+    icon: Heart,
+    iconClassName: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300',
+    cardClassName: 'border-rose-200 bg-rose-50/50 dark:border-rose-500/30 dark:bg-rose-500/10',
+  },
+  {
+    value: 'other',
+    label: 'Otro',
+    category: 'Otros',
+    icon: Shapes,
+    iconClassName: 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-300',
+    cardClassName: 'border-zinc-200 bg-zinc-50 dark:border-white/10 dark:bg-white/5',
+  },
+] satisfies Array<{
+  value: ExpectedIncomeSource;
+  label: string;
+  category: string;
+  icon: typeof Briefcase;
+  iconClassName: string;
+  cardClassName: string;
+}>;
 
 const statusOptions: Array<{ value: ExpectedIncomeStatus; label: string }> = [
   { value: 'expected', label: 'Esperado' },
@@ -34,10 +81,9 @@ const recurrenceOptions: Array<{ value: ExpectedIncomeRecurrence; label: string 
   { value: 'irregular', label: 'Irregular' },
 ];
 
-function createEmptyForm(category: Category = 'Trabajo') {
+function createEmptyForm() {
   return {
     source: 'salary' as ExpectedIncomeSource,
-    category,
     description: '',
     expectedAmount: '',
     expectedDate: new Date().toISOString().slice(0, 10),
@@ -49,14 +95,13 @@ function createEmptyForm(category: Category = 'Trabajo') {
 
 export function ExpectedIncomes() {
   const {
-    categories,
     expectedIncomes,
     addExpectedIncome,
     updateExpectedIncome,
     deleteExpectedIncome,
     markExpectedIncomeReceived,
   } = useApp();
-  const [form, setForm] = useState(() => createEmptyForm(categories.find((category) => category.name === 'Trabajo')?.name ?? categories[0]?.name));
+  const [form, setForm] = useState(createEmptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const currentKey = monthKey(getCurrentYear(), getCurrentMonth());
@@ -72,14 +117,14 @@ export function ExpectedIncomes() {
 
   function resetForm() {
     setEditingId(null);
-    setForm(createEmptyForm(categories.find((category) => category.name === 'Trabajo')?.name ?? categories[0]?.name));
+    setForm(createEmptyForm());
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const payload = {
       source: form.source,
-      category: form.category,
+      category: getCategoryForSource(form.source),
       description: form.description.trim(),
       expectedAmount: Number(form.expectedAmount),
       expectedDate: form.expectedDate,
@@ -116,7 +161,6 @@ export function ExpectedIncomes() {
     setEditingId(income.id);
     setForm({
       source: income.source,
-      category: income.category,
       description: income.description,
       expectedAmount: String(income.expectedAmount),
       expectedDate: income.expectedDate,
@@ -161,20 +205,8 @@ export function ExpectedIncomes() {
 
       <form ref={formRef} className="panel grid gap-4 p-5 lg:grid-cols-6" onSubmit={submit}>
         <div className="lg:col-span-6">
-          <label className="label">Categoria</label>
-          <div className="mt-2">
-            <CategoryPicker value={form.category} onChange={(category) => setForm({ ...form, category })} />
-          </div>
-        </div>
-        <div>
-          <label className="label">Tipo</label>
-          <select className="field mt-2" value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value as ExpectedIncomeSource })}>
-            {sourceOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <label className="label">Origen</label>
+          <SourcePicker value={form.source} onChange={(source) => setForm({ ...form, source })} />
         </div>
         <div className="lg:col-span-2">
           <label className="label">Descripcion</label>
@@ -230,7 +262,6 @@ export function ExpectedIncomes() {
             <ExpectedIncomeCard
               key={income.id}
               income={income}
-              categories={categories}
               onEdit={() => edit(income)}
               onDelete={() => confirmDelete(`el ingreso esperado "${income.description}"`) && deleteExpectedIncome(income.id)}
               onReceive={() => receive(income)}
@@ -264,28 +295,59 @@ function SummaryStat({ label, value, tone }: { label: string; value: string; ton
   );
 }
 
+function SourcePicker({ value, onChange }: { value: ExpectedIncomeSource; onChange: (value: ExpectedIncomeSource) => void }) {
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      {sourceOptions.map((option) => {
+        const selected = value === option.value;
+        const Icon = option.icon;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={`flex min-h-16 items-center gap-3 rounded-lg border px-3 text-left transition active:scale-[0.98] ${
+              selected
+                ? 'border-zinc-950 bg-zinc-950 text-white shadow-sm dark:border-white dark:bg-white dark:text-zinc-950'
+                : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-white/10'
+            }`}
+            onClick={() => onChange(option.value)}
+            aria-pressed={selected}
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-white/90 text-zinc-950 dark:bg-zinc-950 dark:text-white' : option.iconClassName}`}>
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 truncate text-sm font-semibold">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ExpectedIncomeCard({
   income,
-  categories,
   onEdit,
   onDelete,
   onReceive,
 }: {
   income: ExpectedIncome;
-  categories: ReturnType<typeof useApp>['categories'];
   onEdit: () => void;
   onDelete: () => void;
   onReceive: () => void;
 }) {
-  const categoryTone = getCategoryColorFor(categories, income.category);
   const pending = getExpectedIncomePendingAmount(income);
   const canReceive = pending > 0 && !income.receivedMovementId;
+  const source = sourceOptions.find((option) => option.value === income.source) ?? sourceOptions[sourceOptions.length - 1];
+  const SourceIcon = source.icon;
 
   return (
-    <article className={`panel p-5 ${categoryTone.soft} ${categoryTone.border}`}>
+    <article className={`panel p-5 ${source.cardClassName}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 gap-3">
-          <CategoryIcon category={income.category} />
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${source.iconClassName}`}>
+            <SourceIcon className="h-4 w-4" />
+          </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-lg font-bold text-zinc-950 dark:text-white">{income.description}</h2>
@@ -329,6 +391,10 @@ function ExpectedIncomeCard({
 
 function sourceLabel(source: ExpectedIncomeSource): string {
   return sourceOptions.find((option) => option.value === source)?.label ?? 'Otro';
+}
+
+function getCategoryForSource(source: ExpectedIncomeSource): string {
+  return sourceOptions.find((option) => option.value === source)?.category ?? 'Otros';
 }
 
 function statusLabel(status: ExpectedIncomeStatus): string {
