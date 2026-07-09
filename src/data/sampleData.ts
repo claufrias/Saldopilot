@@ -17,5 +17,6 @@ export const initialState: AppState = {
     balance: 0,
   },
   recurringExpenses: [],
+  expectedIncomes: [],
   savingsGoals: [],
 };

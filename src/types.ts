@@ -2,6 +2,9 @@ export type MovementType = 'income' | 'expense';
 export type PaymentMethod = 'cash' | 'credit';
 export type MovementKind = 'standard' | 'credit_card_payment' | 'opening_balance';
 export type Category = string;
+export type ExpectedIncomeSource = 'salary' | 'freelance' | 'sale' | 'rent' | 'aid' | 'other';
+export type ExpectedIncomeStatus = 'expected' | 'partial' | 'received' | 'cancelled';
+export type ExpectedIncomeRecurrence = 'none' | 'weekly' | 'biweekly' | 'monthly' | 'irregular';
 
 export interface AppCategory {
   id: string;
@@ -78,6 +81,20 @@ export interface RecurringExpense {
   active: boolean;
 }
 
+export interface ExpectedIncome {
+  id: string;
+  source: ExpectedIncomeSource;
+  category: Category;
+  description: string;
+  expectedAmount: number;
+  expectedDate: string;
+  status: ExpectedIncomeStatus;
+  receivedAmount?: number;
+  receivedDate?: string;
+  recurrence?: ExpectedIncomeRecurrence;
+  receivedMovementId?: string;
+}
+
 export interface SavingsGoal {
   id: string;
   name: string;
@@ -103,6 +120,7 @@ export interface AppState {
   categories: AppCategory[];
   budgets: Budget[];
   recurringExpenses: RecurringExpense[];
+  expectedIncomes: ExpectedIncome[];
   savingsGoals: SavingsGoal[];
   creditCards: CreditCard[];
   creditCardPayments: CreditCardPayment[];

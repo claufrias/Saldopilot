@@ -12,6 +12,7 @@ import {
   budgetUsage,
   dateFromMonthKey,
   getCreditDueForMonth,
+  getExpectedIncomeUntil,
   getMonthMovements,
   getMovementsWithFinancialStart,
   getOperationalMovements,
@@ -20,7 +21,7 @@ import {
 } from '../utils/finance';
 
 export function Dashboard() {
-  const { movements, savingsGoals, creditCards, creditCardPayments, budgets, recurringExpenses, financialStart } = useApp();
+  const { movements, savingsGoals, creditCards, creditCardPayments, budgets, recurringExpenses, expectedIncomes, financialStart } = useApp();
   const operationalMovements = getOperationalMovements(movements, financialStart.date);
   const displayMovements = getMovementsWithFinancialStart(movements, financialStart);
   const monthMovements = getMonthMovements(displayMovements, getCurrentMonth(), getCurrentYear());
@@ -52,6 +53,7 @@ export function Dashboard() {
     movements: operationalMovements,
     budgets,
     recurringExpenses,
+    expectedIncomes,
     savingsGoals,
   });
 
@@ -365,6 +367,7 @@ function buildAlerts({
   movements,
   budgets,
   recurringExpenses,
+  expectedIncomes,
   savingsGoals,
 }: {
   balance: number;
@@ -374,6 +377,7 @@ function buildAlerts({
   movements: ReturnType<typeof useApp>['movements'];
   budgets: ReturnType<typeof useApp>['budgets'];
   recurringExpenses: ReturnType<typeof useApp>['recurringExpenses'];
+  expectedIncomes: ReturnType<typeof useApp>['expectedIncomes'];
   savingsGoals: ReturnType<typeof useApp>['savingsGoals'];
 }) {
   const today = new Date();
@@ -382,12 +386,32 @@ function buildAlerts({
   const currentYear = getCurrentYear();
   const currentKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const alerts: Array<{ id: string; title: string; description: string; icon: ReactNode; className: string }> = [];
+  const nextDue = getNextCardDue(creditCards, movements, creditCardPayments);
 
-  if (balance < 0 || (dueNextMonth > 0 && balance < dueNextMonth)) {
+  if (nextDue && balance < nextDue.amount) {
+    const expectedBeforeDue = getExpectedIncomeUntil(expectedIncomes, nextDue.date, todayKey);
+    const projectedBalance = balance + expectedBeforeDue;
+
+    alerts.push({
+      id: 'low-balance',
+      title: projectedBalance >= nextDue.amount ? 'Cubierto con ingresos esperados' : 'Riesgo de vencimiento',
+      description: projectedBalance >= nextDue.amount
+        ? `Hoy no alcanza para ${nextDue.card.name}, pero con ${formatCurrency(expectedBeforeDue)} esperados antes del ${formatDate(nextDue.date)} quedaria cubierto.`
+        : `Aun contando ${formatCurrency(expectedBeforeDue)} esperados antes del ${formatDate(nextDue.date)}, faltarian ${formatCurrency(nextDue.amount - projectedBalance)}.`,
+      icon: <AlertTriangle className="h-4 w-4" />,
+      className: projectedBalance >= nextDue.amount
+        ? 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200'
+        : 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200',
+    });
+  } else if (balance < 0 || (dueNextMonth > 0 && balance < dueNextMonth)) {
+    const expectedThisMonth = getExpectedIncomeUntil(expectedIncomes, dateFromMonthKey(currentKey, 31), todayKey);
+
     alerts.push({
       id: 'low-balance',
       title: 'Saldo comprometido',
-      description: `Tu saldo actual queda justo frente a ${formatCurrency(dueNextMonth)} de tarjetas próximo mes.`,
+      description: expectedThisMonth > 0
+        ? `Tu saldo actual queda justo, pero hay ${formatCurrency(expectedThisMonth)} esperados durante el mes.`
+        : `Tu saldo actual queda justo frente a ${formatCurrency(dueNextMonth)} de tarjetas proximo mes.`,
       icon: <AlertTriangle className="h-4 w-4" />,
       className: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200',
     });

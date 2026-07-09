@@ -33,6 +33,7 @@ export function Settings() {
       categories: app.categories,
       budgets: app.budgets,
       recurringExpenses: app.recurringExpenses,
+      expectedIncomes: app.expectedIncomes,
       savingsGoals: app.savingsGoals,
       creditCards: app.creditCards,
       creditCardPayments: app.creditCardPayments,

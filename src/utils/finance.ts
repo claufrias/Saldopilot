@@ -1,4 +1,4 @@
-import type { Budget, Category, CreditCard, CreditCardPayment, FinancialStart, Filters, Movement, RecurringExpense } from '../types';
+import type { Budget, Category, CreditCard, CreditCardPayment, ExpectedIncome, FinancialStart, Filters, Movement, RecurringExpense } from '../types';
 import { getCurrentMonth, getCurrentYear, isSameMonth, monthKey, monthStartFromKey, toMonthKey } from './date';
 
 export function generateId(prefix: string): string {
@@ -68,6 +68,26 @@ export function getBalance(movements: Movement[], openingBalance = 0): number {
 
 export function getOperationalBalance(movements: Movement[], financialStart: FinancialStart): number {
   return getBalance(getOperationalMovements(movements, financialStart.date), financialStart.balance);
+}
+
+export function getExpectedIncomePendingAmount(income: ExpectedIncome): number {
+  if (income.status === 'cancelled' || income.status === 'received') {
+    return 0;
+  }
+
+  return Math.max(0, income.expectedAmount - (income.receivedAmount ?? 0));
+}
+
+export function getExpectedIncomeUntil(expectedIncomes: ExpectedIncome[], endDate: string, startDate?: string): number {
+  return expectedIncomes
+    .filter((income) => income.expectedDate <= endDate && (!startDate || income.expectedDate >= startDate))
+    .reduce((total, income) => total + getExpectedIncomePendingAmount(income), 0);
+}
+
+export function getExpectedIncomeForMonth(expectedIncomes: ExpectedIncome[], selectedMonthKey: string): number {
+  return expectedIncomes
+    .filter((income) => income.expectedDate.startsWith(selectedMonthKey))
+    .reduce((total, income) => total + getExpectedIncomePendingAmount(income), 0);
 }
 
 export function expensesByCategory(movements: Movement[], categories?: Category[]): Array<{ category: Category; amount: number }> {

@@ -8,6 +8,7 @@ import { formatCurrency } from '../utils/format';
 import {
   dateFromMonthKey,
   getCreditDueForMonth,
+  getExpectedIncomePendingAmount,
   getMovementsWithFinancialStart,
   getOperationalMovements,
 } from '../utils/finance';
@@ -36,7 +37,7 @@ const toneClasses: Record<CalendarEventTone, string> = {
 };
 
 export function FinancialCalendar() {
-  const { movements, financialStart, creditCards, creditCardPayments, recurringExpenses } = useApp();
+  const { movements, financialStart, creditCards, creditCardPayments, recurringExpenses, expectedIncomes } = useApp();
   const today = new Date();
   const todayKey = today.toISOString().slice(0, 10);
   const [visibleDate, setVisibleDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -56,8 +57,9 @@ export function FinancialCalendar() {
         creditCards,
         creditCardPayments,
         recurringExpenses,
+        expectedIncomes,
       }),
-    [creditCardPayments, creditCards, movementsWithStart, operationalMovements, recurringExpenses, visibleMonthKey],
+    [creditCardPayments, creditCards, expectedIncomes, movementsWithStart, operationalMovements, recurringExpenses, visibleMonthKey],
   );
 
   const days = buildCalendarDays(year, month);
@@ -389,6 +391,7 @@ function eventLabel(kind: string): string {
     payment: 'Pago',
     recurring: 'Gasto fijo',
     card: 'Tarjeta',
+    'expected-income': 'Ingreso esperado',
   };
 
   return labels[kind] ?? 'Evento';
@@ -400,6 +403,7 @@ function eventDescription(event: CalendarEvent): string {
     payment: 'Pago registrado para una tarjeta.',
     recurring: 'Gasto fijo esperado para este mes.',
     card: 'Vencimiento calculado segun cierre, cuotas y pagos.',
+    'expected-income': 'Ingreso proyectado, todavia no sumado al saldo.',
   };
 
   return descriptions[event.kind] ?? 'Evento financiero.';
@@ -462,6 +466,7 @@ function buildCalendarEvents({
   creditCards,
   creditCardPayments,
   recurringExpenses,
+  expectedIncomes,
 }: {
   monthKey: string;
   movements: ReturnType<typeof getMovementsWithFinancialStart>;
@@ -469,6 +474,7 @@ function buildCalendarEvents({
   creditCards: ReturnType<typeof useApp>['creditCards'];
   creditCardPayments: ReturnType<typeof useApp>['creditCardPayments'];
   recurringExpenses: ReturnType<typeof useApp>['recurringExpenses'];
+  expectedIncomes: ReturnType<typeof useApp>['expectedIncomes'];
 }): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
@@ -484,6 +490,27 @@ function buildCalendarEvents({
         amountClassName: movement.type === 'income' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300',
         cashFlow: movement.type,
         kind: 'movement',
+      });
+    });
+
+  expectedIncomes
+    .filter((income) => income.expectedDate.startsWith(selectedMonthKey))
+    .forEach((income) => {
+      const pending = getExpectedIncomePendingAmount(income);
+
+      if (pending <= 0) {
+        return;
+      }
+
+      events.push({
+        id: `expected-income-${income.id}`,
+        date: income.expectedDate,
+        title: income.description,
+        amount: pending,
+        tone: 'emerald',
+        amountClassName: 'text-emerald-600 dark:text-emerald-300',
+        cashFlow: 'income',
+        kind: 'expected-income',
       });
     });
 

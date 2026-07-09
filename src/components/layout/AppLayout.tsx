@@ -12,6 +12,7 @@ import {
   ReceiptText,
   Settings,
   Target,
+  WalletCards,
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -24,6 +25,7 @@ import { QuickActionSheet } from './QuickActionSheet';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/movimientos', label: 'Movimientos', icon: ReceiptText },
+  { to: '/ingresos-esperados', label: 'Ingresos esperados', icon: WalletCards },
   { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { to: '/calendario', label: 'Calendario', icon: CalendarDays },
   { to: '/presupuestos', label: 'Presupuestos', icon: Gauge },

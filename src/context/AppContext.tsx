@@ -8,6 +8,7 @@ import type {
   Budget,
   CreditCard,
   CreditCardPayment,
+  ExpectedIncome,
   FinancialStart,
   Movement,
   RecurringExpense,
@@ -30,6 +31,10 @@ interface AppContextValue extends AppState {
   addRecurringExpense: (expense: Omit<RecurringExpense, 'id'>) => void;
   updateRecurringExpense: (expense: RecurringExpense) => void;
   deleteRecurringExpense: (id: string) => void;
+  addExpectedIncome: (income: Omit<ExpectedIncome, 'id'>) => void;
+  updateExpectedIncome: (income: ExpectedIncome) => void;
+  deleteExpectedIncome: (id: string) => void;
+  markExpectedIncomeReceived: (id: string, received: { amount: number; date: string }) => void;
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => void;
   updateSavingsGoal: (goal: SavingsGoal) => void;
   deleteSavingsGoal: (id: string) => void;
@@ -239,7 +244,8 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
           const isUsed = category
             ? normalized.movements.some((movement) => movement.category === category.name) ||
               normalized.budgets.some((budget) => budget.category === category.name) ||
-              normalized.recurringExpenses.some((expense) => expense.category === category.name)
+              normalized.recurringExpenses.some((expense) => expense.category === category.name) ||
+              normalized.expectedIncomes.some((income) => income.category === category.name)
             : false;
 
           if (!category || category.isDefault || isUsed) {
@@ -281,6 +287,72 @@ export function AppProvider({ children, userId }: { children: ReactNode; userId?
           ...current,
           recurringExpenses: current.recurringExpenses.filter((expense) => expense.id !== id),
         })),
+      addExpectedIncome: (income) =>
+        setState((current) => {
+          const normalized = normalizeState(current);
+
+          return {
+            ...normalized,
+            expectedIncomes: [{ ...income, id: generateId('expected-income') }, ...normalized.expectedIncomes],
+          };
+        }),
+      updateExpectedIncome: (income) =>
+        setState((current) => {
+          const normalized = normalizeState(current);
+
+          return {
+            ...normalized,
+            expectedIncomes: normalized.expectedIncomes.map((item) => (item.id === income.id ? income : item)),
+          };
+        }),
+      deleteExpectedIncome: (id) =>
+        setState((current) => {
+          const normalized = normalizeState(current);
+
+          return {
+            ...normalized,
+            expectedIncomes: normalized.expectedIncomes.filter((income) => income.id !== id),
+          };
+        }),
+      markExpectedIncomeReceived: (id, received) =>
+        setState((current) => {
+          const normalized = normalizeState(current);
+          const income = normalized.expectedIncomes.find((item) => item.id === id);
+
+          if (!income || income.receivedMovementId || received.amount <= 0) {
+            return normalized;
+          }
+
+          const movementId = generateId('expected-income-movement');
+          const totalReceived = (income.receivedAmount ?? 0) + received.amount;
+
+          return {
+            ...normalized,
+            expectedIncomes: normalized.expectedIncomes.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    status: 'received',
+                    receivedAmount: totalReceived,
+                    receivedDate: received.date,
+                    receivedMovementId: movementId,
+                  }
+                : item,
+            ),
+            movements: [
+              {
+                id: movementId,
+                type: 'income',
+                category: income.category,
+                description: income.description,
+                date: received.date,
+                amount: received.amount,
+                paymentMethod: 'cash',
+              },
+              ...normalized.movements,
+            ],
+          };
+        }),
       addSavingsGoal: (goal) =>
         setState((current) => ({
           ...current,
@@ -439,6 +511,7 @@ function normalizeState(state: AppState): AppState {
     (state.creditCardPayments?.length ?? 0) > 0 ||
     (state.budgets?.length ?? 0) > 0 ||
     (state.recurringExpenses?.length ?? 0) > 0 ||
+    (state.expectedIncomes?.length ?? 0) > 0 ||
     (state.savingsGoals?.length ?? 0) > 0 ||
     Math.abs(state.financialStart?.balance ?? 0) > 0;
   const onboardingCompleted = typeof state.onboardingCompleted === 'boolean' ? state.onboardingCompleted : hasExistingData;
@@ -457,6 +530,13 @@ function normalizeState(state: AppState): AppState {
     categories,
     budgets: state.budgets ?? [],
     recurringExpenses: state.recurringExpenses ?? [],
+    expectedIncomes: (state.expectedIncomes ?? []).map((income) => ({
+      ...income,
+      category: income.category ?? 'Trabajo',
+      source: income.source ?? 'other',
+      status: income.status ?? 'expected',
+      recurrence: income.recurrence ?? 'none',
+    })),
     savingsGoals: (state.savingsGoals ?? []).map((goal) => ({
       ...goal,
       icon: goal.icon ?? 'target',
@@ -472,6 +552,7 @@ function normalizeState(state: AppState): AppState {
 function normalizeCategories(state: AppState): AppCategory[] {
   const source = state.categories?.length ? state.categories : DEFAULT_CATEGORIES;
   const movementCategories = new Set((state.movements ?? []).map((movement) => movement.category));
+  (state.expectedIncomes ?? []).forEach((income) => movementCategories.add(income.category));
   const all = [...source];
 
   movementCategories.forEach((name) => {

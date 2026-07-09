@@ -10,6 +10,7 @@ import { CreditCards } from './pages/CreditCards';
 import { CreateMovement } from './pages/CreateMovement';
 import { Dashboard } from './pages/Dashboard';
 import { FinancialCalendar } from './pages/FinancialCalendar';
+import { ExpectedIncomes } from './pages/ExpectedIncomes';
 import { Goals } from './pages/Goals';
 import { Movements } from './pages/Movements';
 import { Onboarding } from './pages/Onboarding';
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="movimientos" element={<Movements />} />
         <Route path="movimientos/nuevo" element={<CreateMovement />} />
+        <Route path="ingresos-esperados" element={<ExpectedIncomes />} />
         <Route path="categorias/nueva" element={<CreateCategory />} />
         <Route path="estadisticas" element={<Stats />} />
         <Route path="calendario" element={<FinancialCalendar />} />
