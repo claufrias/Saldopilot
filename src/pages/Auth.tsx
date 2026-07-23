@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { KeyRound, LockKeyhole, LogIn, PiggyBank, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase';
 
 const authBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio.png`;
 const mobileAuthBackgroundUrl = `${import.meta.env.BASE_URL}fondo_inicio_movil.png`;
@@ -254,7 +254,7 @@ export function Auth() {
           <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
             {isSupabaseConfigured
               ? 'Tus datos se sincronizan entre dispositivos.'
-              : 'El servicio de acceso y sincronización no está configurado.'}
+              : supabaseConfigError || 'El servicio de acceso y sincronización no está configurado.'}
           </p>
         </div>
       </section>

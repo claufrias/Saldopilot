@@ -24,11 +24,27 @@ interface SupabaseSignUpResponse {
 }
 
 function normalizeSupabaseUrl(url: string) {
-  return url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  const trimmedUrl = url.trim();
+
+  if (!trimmedUrl) {
+    return '';
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedUrl.match(/^https?:\/\//i) ? trimmedUrl : `https://${trimmedUrl}`);
+    parsedUrl.pathname = parsedUrl.pathname.replace(/\/(?:rest|auth)\/v1\/?.*$/, '').replace(/\/$/, '');
+    parsedUrl.search = '';
+    parsedUrl.hash = '';
+
+    return `${parsedUrl.origin}${parsedUrl.pathname === '/' ? '' : parsedUrl.pathname}`;
+  } catch {
+    return trimmedUrl.replace(/\/(?:rest|auth)\/v1\/?.*$/, '').replace(/\/$/, '');
+  }
 }
 
 export const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
+export const supabaseConfigError = getSupabaseConfigError(supabaseUrl, supabaseKey);
+export const isSupabaseConfigured = !supabaseConfigError;
 
 function getStoredSession() {
   try {
@@ -62,13 +78,51 @@ function appRedirectUrl() {
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
+  const body = text ? safeParseJson(text) : null;
 
   if (!response.ok) {
-    throw new Error(body?.msg || body?.message || body?.error_description || 'No se pudo completar la solicitud.');
+    throw new Error(body?.msg || body?.message || body?.error_description || response.statusText || 'No se pudo completar la solicitud.');
   }
 
   return body as T;
+}
+
+async function requestSupabase(path: string, init?: RequestInit) {
+  try {
+    return await fetch(`${supabaseUrl}${path}`, init);
+  } catch {
+    throw new Error('No se pudo conectar con Supabase. Revisá que VITE_SUPABASE_URL sea la URL base del proyecto, por ejemplo https://tu-proyecto.supabase.co, y que el proyecto esté activo.');
+  }
+}
+
+function safeParseJson(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function getSupabaseConfigError(url: string, key: string) {
+  if (!url || !key) {
+    return 'El servicio de acceso y sincronización no está configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
+  }
+
+  if (url.includes('your-project-ref') || url.includes('tu-proyecto') || key.includes('your_publishable_key') || key.includes('tu_key')) {
+    return 'Las variables de Supabase todavía tienen valores de ejemplo. Configura la Project URL y la publishable key reales, y vuelve a desplegar la app.';
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+
+    if (!/^https?:$/.test(parsedUrl.protocol)) {
+      return 'La URL de Supabase debe empezar con https://.';
+    }
+  } catch {
+    return 'La URL de Supabase no es válida. Usa la Project URL base, por ejemplo https://tu-proyecto.supabase.co.';
+  }
+
+  return '';
 }
 
 export const supabaseApi = isSupabaseConfigured
@@ -86,7 +140,7 @@ export const supabaseApi = isSupabaseConfigured
         const accessToken = hash.get('access_token') ?? '';
         const refreshToken = hash.get('refresh_token') ?? undefined;
         const type = hash.get('type') ?? 'session';
-        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        const response = await requestSupabase('/auth/v1/user', {
           headers: authHeaders(accessToken),
         });
         const user = await parseResponse<SupabaseAuthUser>(response);
@@ -96,7 +150,7 @@ export const supabaseApi = isSupabaseConfigured
         return { session, type };
       },
       async signInWithPassword(email: string, password: string) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        const response = await requestSupabase('/auth/v1/token?grant_type=password', {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({ email, password }),
@@ -106,7 +160,7 @@ export const supabaseApi = isSupabaseConfigured
         return session;
       },
       async signUp(email: string, password: string, name: string) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/signup?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
+        const response = await requestSupabase(`/auth/v1/signup?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({
@@ -135,7 +189,7 @@ export const supabaseApi = isSupabaseConfigured
         return { user: result as SupabaseAuthUser };
       },
       async recoverPassword(email: string) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/recover?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
+        const response = await requestSupabase(`/auth/v1/recover?redirect_to=${encodeURIComponent(appRedirectUrl())}`, {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({ email }),
@@ -150,7 +204,7 @@ export const supabaseApi = isSupabaseConfigured
           throw new Error('No hay una sesión de recuperación activa. Abre el enlace enviado por email nuevamente.');
         }
 
-        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        const response = await requestSupabase('/auth/v1/user', {
           method: 'PUT',
           headers: authHeaders(session.access_token),
           body: JSON.stringify({ password }),
@@ -164,7 +218,7 @@ export const supabaseApi = isSupabaseConfigured
         const session = getStoredSession();
 
         if (session) {
-          await fetch(`${supabaseUrl}/auth/v1/logout`, {
+          await requestSupabase('/auth/v1/logout', {
             method: 'POST',
             headers: authHeaders(session.access_token),
           }).catch(() => undefined);
@@ -185,7 +239,7 @@ export const supabaseApi = isSupabaseConfigured
           state_key: `eq.${stateKey}`,
           limit: '1',
         });
-        const response = await fetch(`${supabaseUrl}/rest/v1/user_app_states?${params.toString()}`, {
+        const response = await requestSupabase(`/rest/v1/user_app_states?${params.toString()}`, {
           headers: authHeaders(session.access_token),
         });
         const rows = await parseResponse<Array<{ state: T }>>(response);
@@ -198,7 +252,7 @@ export const supabaseApi = isSupabaseConfigured
           return;
         }
 
-        const response = await fetch(`${supabaseUrl}/rest/v1/user_app_states?on_conflict=user_id,state_key`, {
+        const response = await requestSupabase('/rest/v1/user_app_states?on_conflict=user_id,state_key', {
           method: 'POST',
           headers: {
             ...authHeaders(session.access_token),

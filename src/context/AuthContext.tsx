@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { isSupabaseConfigured, supabaseApi } from '../lib/supabase';
+import { isSupabaseConfigured, supabaseApi, supabaseConfigError } from '../lib/supabase';
 
 interface SessionUser {
   id: string;
@@ -180,7 +180,7 @@ function translateSupabaseAuthError(message: string) {
 }
 
 function missingSupabaseMessage() {
-  return 'El servicio de acceso y sincronización no está configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
+  return supabaseConfigError || 'El servicio de acceso y sincronización no está configurado. Revisa las variables de entorno y vuelve a desplegar la app.';
 }
 
 function normalizeEmail(email: string) {

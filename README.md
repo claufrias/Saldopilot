@@ -29,6 +29,10 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_tu_key
 
 6. Para GitHub Pages, agrega esas mismas claves como **Repository variables** en **Settings → Secrets and variables → Actions → Variables**.
 
+### Si el login muestra "Failed to fetch"
+
+Ese error suele indicar que el navegador no pudo conectarse a Supabase. Revisa que `VITE_SUPABASE_URL` sea la **Project URL** base (`https://tu-proyecto.supabase.co`), que no tenga `/rest/v1/` ni `/auth/v1/`, que no sean los valores de ejemplo de `.env.example`, y vuelve a ejecutar el workflow de GitHub Pages para reconstruir la app con las variables reales.
+
 ## Publicar en GitHub Pages
 
 Este repositorio incluye un workflow de GitHub Actions que compila la app y publica `dist/` en GitHub Pages al hacer push a `main`, `master` o `work`, y también permite ejecutar el despliegue manualmente desde la pestaña **Actions**.
